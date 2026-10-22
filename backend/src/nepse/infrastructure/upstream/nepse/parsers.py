@@ -24,6 +24,9 @@ SECTOR_CODES = {
 # Preference shares are skipped: no index tracks them and the instrument_type enum has no slot for them.
 INSTRUMENT_TYPES = {"Equity": "EQUITY", "Mutual Funds": "MUTUAL_FUND", "Non-Convertible Debentures": "DEBENTURE"}
 
+# NEPSE activeStatus code -> companies.status (the schema default and every reader use the long form)
+STATUSES = {"A": "ACTIVE", "S": "SUSPENDED"}
+
 
 def npt(ts: str) -> datetime:
     """NEPSE timestamps are naive NPT, either '2026-10-16 15:00:00.000876' or '2026-10-16T10:46:00.018539'."""
@@ -109,7 +112,7 @@ def listed_companies(companies: list[dict], securities: list[dict]) -> list[List
         sector = "MUTUAL" if instrument == "MUTUAL_FUND" else SECTOR_CODES.get(c.get("sectorName"))
         out.append(ListedCompany(
             symbol=c["symbol"], name=c.get("securityName") or c["companyName"], sector_code=sector,
-            instrument_type=instrument, status=c["status"], nepse_id=security_ids.get(c["symbol"]),
+            instrument_type=instrument, status=STATUSES.get(c["status"], c["status"]), nepse_id=security_ids.get(c["symbol"]),
         ))
     # Promoter shares trade (and show up in floorsheets) but are absent from company/list; the security list
     # names them "<Company> Promoter Share", which also gives the parent's sector.
@@ -118,7 +121,7 @@ def listed_companies(companies: list[dict], securities: list[dict]) -> list[List
         if s["symbol"] not in listed and "promoter" in s["securityName"].lower():
             out.append(ListedCompany(
                 symbol=s["symbol"], name=s["securityName"], sector_code=sector_by_name.get(_base_name(s["securityName"])),
-                instrument_type="PROMOTER", status=s.get("activeStatus") or "A", nepse_id=int(s["id"]),
+                instrument_type="PROMOTER", status=STATUSES.get(s.get("activeStatus") or "A", "ACTIVE"), nepse_id=int(s["id"]),
             ))
     return out
 

@@ -64,6 +64,8 @@ async def _seed(engine) -> None:
             "(4, 'III', 'Delisted', :bank, 'EQUITY', 1000, 'DELISTED'),"
             "(5, 'NNN', 'No Bars', :hydro, 'EQUITY', 1000, 'ACTIVE'),"
             "(6, 'PPP', 'Promoter', :bank, 'PROMOTER', 1000, 'ACTIVE')"), {"bank": sector["BANKING"], "hydro": sector["HYDRO"]})
+        # Explicit ids don't advance the sequence; without this the next plain INSERT (other suites) hits id=1.
+        await conn.execute(sa.text("SELECT setval('companies_id_seq', (SELECT max(id) FROM companies))"))
         bars = []
         for i, d in enumerate(DAYS):
             # AAA had a 1:1 bonus at bar 100: older raw prices are double, adj_factor 0.5 restores continuity

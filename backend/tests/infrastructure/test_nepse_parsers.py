@@ -54,7 +54,7 @@ def test_listed_companies_skips_delisted_and_maps_sectors():
     companies = parsers.listed_companies(load("company_list"), load("security_list"))
     by_symbol = {c.symbol: c for c in companies}
     assert by_symbol["NABIL"].sector_code == "BANKING" and by_symbol["NABIL"].nepse_id == 131
-    assert all(c.status != "D" for c in companies)
+    assert {c.status for c in companies} <= {"ACTIVE", "SUSPENDED"}
 
 
 def test_promoter_shares_inherit_parent_sector():

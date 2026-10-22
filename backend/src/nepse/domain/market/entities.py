@@ -73,7 +73,7 @@ class ListedCompany:
     name: str
     sector_code: str | None
     instrument_type: str  # EQUITY | MUTUAL_FUND | DEBENTURE
-    status: str  # A (active) | S (suspended)
+    status: str  # ACTIVE | SUSPENDED
     nepse_id: int | None  # NEPSE security id
 
 

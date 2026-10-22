@@ -10,6 +10,7 @@ from nepse.domain.market.session import MarketStatus
 
 STATUS_KEY, QUOTES_KEY, INDICES_KEY = "nepse:live:status", "nepse:live:quotes", "nepse:live:indices"
 EVENTS_CHANNEL = "nepse:live:events"
+LAST_CONTRACT_KEY = "nepse:live:last_contract"
 
 
 def _json(obj) -> str:
@@ -48,6 +49,13 @@ class RedisLiveStore:
             if indices:
                 pipe.hset(INDICES_KEY, mapping={k: _json(asdict(v)) for k, v in indices.items()})
             await pipe.execute()
+
+    async def get_last_contract(self) -> int | None:
+        raw = await self._redis.get(LAST_CONTRACT_KEY)
+        return int(raw) if raw else None
+
+    async def set_last_contract(self, contract_no: int) -> None:
+        await self._redis.set(LAST_CONTRACT_KEY, contract_no)
 
     async def publish(self, topic: str, data: object) -> None:
         if isinstance(data, dict):

@@ -19,6 +19,7 @@ def tick(contract: int, symbol: str = "NABIL", buyer: int = 1, seller: int = 2) 
 class FakeSource:
     def __init__(self, is_open=True, quotes=(), indices=(), pages=()):
         self.is_open, self.quotes, self.indices, self.pages = is_open, list(quotes), list(indices), list(pages)
+        self.latest = []
 
     async def market_open(self):
         return MarketOpen(self.is_open, TS, 80)
@@ -30,7 +31,7 @@ class FakeSource:
         return self.indices
 
     async def listed_companies(self):
-        return [ListedCompany("NABIL", "Nabil Bank", "BANKING", "EQUITY", "A", 131)]
+        return [ListedCompany("NABIL", "Nabil Bank", "BANKING", "EQUITY", "ACTIVE", 131)]
 
     async def today_prices(self):
         p = Decimal("500")
@@ -45,10 +46,20 @@ class FakeSource:
         for page in self.pages:
             yield page
 
+    async def latest_trades(self):
+        return self.latest
+
 
 class FakeStore:
     def __init__(self):
         self.status, self.quotes, self.indices, self.events = None, {}, {}, []
+        self.last_contract = None
+
+    async def get_last_contract(self):
+        return self.last_contract
+
+    async def set_last_contract(self, contract_no):
+        self.last_contract = contract_no
 
     async def get_status(self):
         return self.status

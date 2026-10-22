@@ -39,8 +39,8 @@ def tick(contract: int, buyer: int, seller: int, qty: int) -> FloorsheetTick:
 
 
 async def test_full_eod_cycle_is_idempotent(repo):
-    companies = [ListedCompany("ZZTA", "Test A", "HYDRO", "EQUITY", "A", 999001),
-                 ListedCompany("ZZTB", "Test B", None, "MUTUAL_FUND", "S", None)]
+    companies = [ListedCompany("ZZTA", "Test A", "HYDRO", "EQUITY", "ACTIVE", 999001),
+                 ListedCompany("ZZTB", "Test B", None, "MUTUAL_FUND", "SUSPENDED", None)]
     assert await repo.upsert_companies(companies) == 2
     assert await repo.upsert_companies(companies) == 2  # update path
 

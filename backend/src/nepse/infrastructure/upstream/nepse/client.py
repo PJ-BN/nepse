@@ -114,3 +114,9 @@ class NepseClient:
             yield ticks
             page += 1
             await asyncio.sleep(PAGE_DELAY)
+
+    async def latest_trades(self) -> list[FloorsheetTick]:
+        market_id = (await self.market_open()).market_id
+        data = await self._call("POST", "nots/nepse-data/floorsheet", PayloadKind.FLOORSHEET, market_id,
+                                size=PAGE_SIZE, page=0, sort="contractId,desc")
+        return parsers.floorsheet_page(data)[0]

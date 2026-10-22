@@ -123,7 +123,7 @@ class SqlIngestionRepository:
     async def active_symbols(self) -> list[str]:
         async with self._engine.connect() as conn:
             rows = await conn.execute(
-                select(Company.symbol).where(Company.status == "A", Company.instrument_type.in_(["EQUITY", "MUTUAL_FUND"]))
+                select(Company.symbol).where(Company.status == "ACTIVE", Company.instrument_type.in_(["EQUITY", "MUTUAL_FUND"]))
                 .order_by(Company.symbol)
             )
             return list(rows.scalars())

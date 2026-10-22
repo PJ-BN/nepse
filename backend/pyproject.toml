@@ -37,6 +37,9 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# One loop for the whole run: the app's module-level engine (db/session.py) must not cross event loops.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 
 [tool.importlinter]
 root_package = "nepse"
