@@ -1,6 +1,8 @@
-"""Run a screener filter, built-in presets and CSV export."""
+"""Run a screener filter, built-in presets and CSV/Excel export."""
 import csv
 import io
+
+from openpyxl import Workbook
 
 from nepse.application.screener.filter_ast import OUTPUT_COLUMNS, parse_filter, parse_limit, parse_sort
 from nepse.application.screener.ports import ScreenerRepository
@@ -29,13 +31,10 @@ PRESETS: dict[str, dict] = {
         ]},
         "sort": ["-top3_broker_accum_15d_pct"],
     },
-    "rsi-oversold-above-sma200": {
-        "name": "RSI oversold above SMA200",
-        "description": "RSI(14) under 30 while price holds above the 200-day average: a pullback in an uptrend.",
-        "filter": {"and": [
-            {"field": "rsi_14", "op": "<", "value": 30},
-            {"field": "close", "op": ">", "value": {"field": "sma_200"}},
-        ]},
+    "rsi-bullish-divergence": {
+        "name": "RSI bullish divergence",
+        "description": "Price made a lower low over the last 15 sessions while RSI(14) made a higher low: selling momentum is fading.",
+        "filter": {"and": [{"field": "rsi_bull_div", "op": "=", "value": 1}]},
         "sort": ["rsi_14"],
     },
 }
@@ -57,4 +56,16 @@ def to_csv(rows: list[dict]) -> str:
     w = csv.DictWriter(buf, fieldnames=OUTPUT_COLUMNS, extrasaction="ignore", lineterminator="\n")
     w.writeheader()
     w.writerows(rows)
+    return buf.getvalue()
+
+
+def to_xlsx(rows: list[dict]) -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Screener"
+    ws.append(list(OUTPUT_COLUMNS))
+    for r in rows:
+        ws.append([r.get(c) for c in OUTPUT_COLUMNS])
+    buf = io.BytesIO()
+    wb.save(buf)
     return buf.getvalue()

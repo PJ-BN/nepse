@@ -16,6 +16,7 @@ export const FIELDS = {
   atr_pct: { label: "ATR %", kind: "num" },
   high_52w: { label: "52w high", kind: "num" },
   low_52w: { label: "52w low", kind: "num" },
+  rsi_bull_div: { label: "RSI bullish divergence (1/0)", kind: "num" },
   top3_broker_accum_15d_pct: { label: "Top-3 broker accum 15d %", kind: "num" },
   eps: { label: "EPS", kind: "num" },
   bvps: { label: "Book value / share", kind: "num" },

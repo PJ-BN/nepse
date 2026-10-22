@@ -5,11 +5,12 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from nepse.application.screener.filter_ast import OUTPUT_COLUMNS, FilterError
-from nepse.application.screener.run_screener import PRESETS, run_screener, to_csv
+from nepse.application.screener.run_screener import PRESETS, run_screener, to_csv, to_xlsx
 from nepse.infrastructure.db.repositories.screener import SqlScreenerRepository
 from nepse.infrastructure.db.session import SessionLocal
 from nepse.presentation.api.schemas.screener import PresetOut, ScreenerRunRequest, ScreenerRunResponse
 
+XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 router = APIRouter(prefix="/api/v1/screener", tags=["screener"])
 
 
@@ -32,6 +33,9 @@ async def run(req: ScreenerRunRequest, session: AsyncSession = Depends(get_sessi
     if req.format == "csv":
         return Response(to_csv(rows), media_type="text/csv",
                         headers={"Content-Disposition": 'attachment; filename="screener.csv"'})
+    if req.format == "xlsx":
+        return Response(to_xlsx(rows), media_type=XLSX,
+                        headers={"Content-Disposition": 'attachment; filename="screener.xlsx"'})
     return {"columns": list(OUTPUT_COLUMNS), "count": len(rows), "rows": rows}
 
 

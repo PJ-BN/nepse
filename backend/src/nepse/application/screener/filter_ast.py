@@ -31,6 +31,7 @@ FIELDS: dict[str, str] = {
     "atr_pct": NUM,
     "high_52w": NUM,
     "low_52w": NUM,
+    "rsi_bull_div": NUM,  # 1 = price lower low with RSI higher low, else 0
     "top3_broker_accum_15d_pct": NUM,
     "eps": NUM,
     "bvps": NUM,

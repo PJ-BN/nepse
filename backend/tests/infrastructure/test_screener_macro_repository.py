@@ -18,8 +18,9 @@ from sqlalchemy.pool import NullPool
 from nepse.application.macro.ports import CD_RATIO, IssueRow, Observation
 from nepse.application.screener.filter_ast import FilterError, parse_filter, parse_sort
 from nepse.application.screener.run_screener import run_preset, run_screener
-from nepse.domain.technicals.indicators import atr_pct, rsi, sma
+from nepse.domain.technicals.indicators import atr_pct, rsi, rsi_bullish_divergence, sma
 from nepse.infrastructure.db.repositories.macro import SqlMacroRepository
+from nepse.infrastructure.db.repositories.mutual_funds import SqlMutualFundRepository
 from nepse.infrastructure.db.repositories.screener import SqlScreenerRepository, build_query
 
 DB_URL = os.environ.get("DATABASE_URL", "")
@@ -143,10 +144,12 @@ async def test_snapshot_matches_domain_indicators(session):
     assert a["market_cap"] == pytest.approx(adj[-1] * 10_000_000)
     assert a["volume"] == 1000 + N_BARS - 1
     assert a["top3_broker_accum_15d_pct"] is None  # no floorsheet
+    assert a["rsi_bull_div"] == (1 if rsi_bullish_divergence(adj) else 0)
 
     h = rows["HHH"]
     assert h["top3_broker_accum_15d_pct"] == pytest.approx(50.0)
     assert h["rsi_14"] == pytest.approx(0.0)  # falls every day
+    assert h["rsi_bull_div"] == 0  # RSI pinned at 0 on both lows
     assert rows["NNN"]["close"] is None and rows["NNN"]["sma_200"] is None
 
 
@@ -163,8 +166,28 @@ async def test_filters_sort_and_presets(session):
     assert [r["symbol"] for r in got] == ["AAA"]
     hydro = await run_preset(repo, "broker-cornered-low-cap-hydro")
     assert [r["symbol"] for r in hydro] == ["HHH"]
-    for preset in ("undervalued-banks", "rsi-oversold-above-sma200"):
+    for preset in ("undervalued-banks", "rsi-bullish-divergence"):
         await run_preset(repo, preset)
+
+
+async def test_mutual_fund_snapshots(session):
+    await session.execute(sa.text(
+        "INSERT INTO companies (id, symbol, name, instrument_type, status) VALUES "
+        "(7, 'MFA', 'Fund A', 'MUTUAL_FUND', 'ACTIVE'), (8, 'MFB', 'Fund B', 'MUTUAL_FUND', 'ACTIVE')"))
+    await session.execute(sa.text(
+        "INSERT INTO ohlcv_daily (company_id, trade_date, close) VALUES (7, :d, 8.0), (7, :e, 8.5)"),
+        {"d": DAYS[-2], "e": DAYS[-1]})
+    await session.execute(sa.text(
+        "INSERT INTO mutual_fund_nav (company_id, nav_date, weekly_nav, monthly_nav) VALUES "
+        "(7, '2026-10-01', 9, NULL), (7, '2026-10-08', NULL, 10.5)"))
+    await session.execute(sa.text(
+        "INSERT INTO quarterly_financials (company_id, fy_bs, quarter, period_end, sector_metrics) VALUES "
+        "(7, '2082/83', 1, '2026-10-01', '{\"maturity_date\": \"2027-03-01\"}')"))
+    rows = {f.symbol: f for f in await SqlMutualFundRepository(session).snapshots()}
+    assert set(rows) == {"MFA", "MFB"}
+    a = rows["MFA"]
+    assert (a.ltp, a.nav, a.nav_date, a.maturity_date) == (8.5, 10.5, date(2026, 10, 8), date(2027, 3, 1))
+    assert (rows["MFB"].ltp, rows["MFB"].nav, rows["MFB"].maturity_date) == (None, None, None)
 
 
 INJECTIONS = [
@@ -243,6 +266,9 @@ async def test_api_endpoints(session):
             "filter": {"field": "close", "op": ">", "value": {"field": "sma_200"}}, "format": "csv"})
         assert r.headers["content-type"].startswith("text/csv")
         assert r.text.splitlines()[1].startswith("AAA,BANKING,2026-10-15,")
+        r = await c.post("/api/v1/screener/run", json={"format": "xlsx"})
+        assert r.headers["content-type"].startswith("application/vnd.openxmlformats") and r.content[:2] == b"PK"
+        assert (await c.get("/api/v1/mutual-funds")).json() == []
         r = await c.post("/api/v1/screener/run", json={"filter": {"field": "close;--", "op": ">", "value": 1}})
         assert r.status_code == 422 and "unknown field" in r.json()["detail"]
         assert (await c.post("/api/v1/screener/run", json={"preset": "nope"})).status_code == 404
