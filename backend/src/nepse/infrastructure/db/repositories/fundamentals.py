@@ -3,7 +3,7 @@ from dataclasses import asdict, fields
 from datetime import timedelta
 from decimal import Decimal
 
-from sqlalchemy import func, literal_column, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,10 +36,9 @@ class SqlFundamentalsRepository:
 
     async def create_company(self, symbol: str, name: str, sector_code: str | None) -> CompanyRow:
         sector_id = await self.s.scalar(select(Sector.id).where(Sector.code == sector_code)) if sector_code else None
-        kind = "MUTUAL_FUND" if sector_code == "MUTUAL" else "EQUITY"
         await self.s.execute(insert(Company).values(
             symbol=symbol, name=name, sector_id=sector_id,
-            instrument_type=literal_column(f"'{kind}'::instrument_type"),  # PG enum; a bound VARCHAR is rejected
+            instrument_type="MUTUAL_FUND" if sector_code == "MUTUAL" else "EQUITY",
         ).on_conflict_do_nothing(index_elements=["symbol"]))
         await self.s.commit()
         return await self.company(symbol)
