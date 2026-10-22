@@ -9,6 +9,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 
 import httpx
+from selectolax.lexbor import LexborHTMLParser
 
 from nepse.domain.market.entities import CorporateActionRecord, DailyBar
 
@@ -55,6 +56,27 @@ def price_rows(symbol: str, rows: list[dict]) -> list[DailyBar]:
         )
         for r in rows
     ]
+
+
+def today_price_rows(html: str) -> list[DailyBar]:
+    """The /today-share-price table (latest session; its date is the "As of" heading), columns found by header."""
+    as_of = re.search(r"As of\s*:\s*<span[^>]*>(\d{4}-\d{2}-\d{2})", html)
+    table = LexborHTMLParser(html).css_first("table#headFixed")
+    if not as_of or table is None:
+        raise ValueError("ShareSansar today-share-price layout changed: date or table not found")
+    day = date.fromisoformat(as_of.group(1))
+    head = [th.text(strip=True) for th in table.css("thead th")]
+    out = []
+    for tr in table.css("tbody tr"):
+        cells = dict(zip(head, (td.text(strip=True) for td in tr.css("td")), strict=False))
+        if not cells.get("Symbol"):
+            continue
+        out.append(DailyBar(
+            symbol=cells["Symbol"], trade_date=day, open=_dec(cells["Open"]), high=_dec(cells["High"]),
+            low=_dec(cells["Low"]), close=_dec(cells["Close"]), prev_close=_dec(cells["Prev. Close"]),
+            volume=int(_dec(cells["Vol"])), turnover=_dec(cells["Turnover"]), transactions=int(_dec(cells["Trans."])),
+        ))
+    return out
 
 
 def with_prev_close(bars: list[DailyBar]) -> list[DailyBar]:
@@ -131,6 +153,11 @@ class ShareSansarClient:
         )
         res.raise_for_status()
         return res.json()
+
+    async def today_prices(self) -> list[DailyBar]:
+        res = await self._http.get("today-share-price")
+        res.raise_for_status()
+        return today_price_rows(res.text)
 
     async def history(self, symbol: str, since: date) -> tuple[list[DailyBar], list[CorporateActionRecord]]:
         """Daily bars from `since` to today (newest first upstream) plus every dividend/right record."""

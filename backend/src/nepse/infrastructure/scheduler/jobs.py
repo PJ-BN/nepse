@@ -1,6 +1,7 @@
 """NPT cron schedule for ingestion use cases."""
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
+from dataclasses import dataclass
 from datetime import time
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -18,9 +19,27 @@ TRADING_DAYS = "sun,mon,tue,wed,thu"
 POLL_START, POLL_END = time(10, 30), time(15, 5)
 
 
+@dataclass(frozen=True)
+class DailyJob:
+    """A once-a-day trading-day job; add one to the `daily` list in workers/main.py to schedule another."""
+    id: str
+    at: time  # NPT
+    run: Callable[[], Awaitable[object]]
+
+
+def _guarded(job: DailyJob) -> Callable[[], Awaitable[None]]:
+    async def run() -> None:
+        try:
+            log.info("%s done: %s", job.id, await job.run())
+        except Exception:  # a failed job must not kill the schedule; tomorrow's run retries
+            log.exception("%s failed", job.id)
+
+    return run
+
+
 def build_scheduler(
     source: MarketDataSource, store: LiveStore, repo: IngestionRepository,
-    refresh_screener: Callable[[], Awaitable[None]],
+    refresh_screener: Callable[[], Awaitable[None]], daily: Sequence[DailyJob] = (),
 ) -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler(timezone="Asia/Kathmandu", job_defaults={"coalesce": True, "max_instances": 1})
 
@@ -56,6 +75,8 @@ def build_scheduler(
 
     # mv_screener_snapshot every minute during the session (plan: "refreshed every 1 min"), and after EOD above.
     scheduler.add_job(screener, "cron", day_of_week=TRADING_DAYS, hour="10-15", minute="*", id="screener")
+    for job in daily:
+        scheduler.add_job(_guarded(job), "cron", day_of_week=TRADING_DAYS, hour=job.at.hour, minute=job.at.minute, id=job.id)
     # Seed the live snapshot once at startup so the dashboard has data outside market hours.
     scheduler.add_job(poll, kwargs={"force": True}, id="seed_snapshot")
     return scheduler

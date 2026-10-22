@@ -136,3 +136,20 @@ class SqlIngestionRepository:
             for view in ("broker_buy_daily", "broker_sell_daily"):
                 await conn.execute(text(f"CALL refresh_continuous_aggregate('{view}', CAST(:start AS timestamptz), CAST(:end AS timestamptz))"),
                                    {"start": window[0], "end": window[1]})
+
+    async def daily_bars_on(self, day: date) -> list[DailyBar]:
+        async with self._engine.connect() as conn:
+            rows = await conn.execute(
+                select(Company.symbol, OhlcvDaily).join(Company, Company.id == OhlcvDaily.company_id)
+                .where(OhlcvDaily.trade_date == day)
+            )
+            return [DailyBar(symbol, day, r.open, r.high, r.low, r.close, r.prev_close, r.volume, r.turnover, r.transactions)
+                    for symbol, r in ((row[0], row[1]) for row in rows)]
+
+    async def floorsheet_days(self, start: date, end: date) -> set[date]:
+        day = func.date(func.timezone("Asia/Kathmandu", TickRow.trade_time))
+        async with self._engine.connect() as conn:
+            rows = await conn.execute(select(day).where(
+                TickRow.trade_time >= datetime.combine(start, time(), NPT),
+                TickRow.trade_time < datetime.combine(end + timedelta(days=1), time(), NPT)).distinct())
+            return set(rows.scalars())

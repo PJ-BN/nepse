@@ -44,3 +44,12 @@ def test_merge_same_day_bonus_and_right():
         ss.CorporateActionRecord("X", d, None, right_pct=Decimal(50)),
     ])
     assert len(merged) == 1 and (merged[0].bonus_pct, merged[0].right_pct, merged[0].fiscal_year_bs) == (10, 50, "2080/81")
+
+
+def test_today_price_rows():
+    bars = ss.today_price_rows((FIXTURES / "today_price.html").read_text())
+    assert [b.symbol for b in bars][0] == "ACLBSL" and len(bars) == 3
+    first = bars[0]
+    assert (first.trade_date, first.open, first.close, first.prev_close, first.volume, first.transactions) == (
+        date(2026, 10, 16), Decimal("850.00"), Decimal("850.00"), Decimal("840.00"), 892, 8)
+    assert first.turnover == Decimal("762325.00")
