@@ -1,0 +1,37 @@
+{
+ "draw": 1,
+ "recordsTotal": 4,
+ "recordsFiltered": 4,
+ "data": [
+  {
+   "ratio_value": "1: 0.40",
+   "total_units": "16533137.00",
+   "issue_price": "100.00",
+   "opening_date": "2023-08-16",
+   "closing_date": "2023-09-05",
+   "final_date": "2023-07-07",
+   "listing_date": "2023-11-10",
+   "announcement_link": "https://www.sharesansar.com/announcementdetail/api-power-company-limited-has-published-an-offer-letter-to-issue-a-1040-ratio-16533137-units-right-share-to-its-shareholders-from-31st-shrawan-to-19th-bhadra-2080-2023-07-30",
+   "issue_manager": "Muktinath Capital Limited",
+   "displayable_share_type": "Others",
+   "status": 1,
+   "bkstatus": 0,
+   "DT_Row_Index": 1
+  },
+  {
+   "ratio_value": "1: 0.3936",
+   "total_units": "10860000.00",
+   "issue_price": "100.00",
+   "opening_date": "2022-04-08",
+   "closing_date": "2022-04-28",
+   "final_date": "2022-03-28",
+   "listing_date": "2022-07-13",
+   "announcement_link": "https://www.sharesansar.com/announcementdetail/api-power-company-limited-has-published-an-offer-letter-to-issue-a-1-0393632-ratio-10860000-units-right-share-to-its-shareholders-from-25th-chaitra-to-15th-baisakh-2079-2022-03-23",
+   "issue_manager": "Muktinath Capital Ltd.",
+   "displayable_share_type": "Others",
+   "status": 1,
+   "bkstatus": 0,
+   "DT_Row_Index": 2
+  }
+ ]
+}

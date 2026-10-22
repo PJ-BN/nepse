@@ -1,0 +1,43 @@
+{
+ "draw": 1,
+ "recordsTotal": 3552,
+ "recordsFiltered": 3552,
+ "data": [
+  {
+   "published_date": "2026-10-16",
+   "open": "548.00",
+   "high": "549.20",
+   "low": "544.00",
+   "close": "547.00",
+   "per_change": "0.18",
+   "traded_quantity": "30945.00",
+   "traded_amount": "16936213.90",
+   "status": 1,
+   "DT_Row_Index": 1
+  },
+  {
+   "published_date": "2026-10-15",
+   "open": "541.00",
+   "high": "548.00",
+   "low": "541.00",
+   "close": "546.00",
+   "per_change": "0.92",
+   "traded_quantity": "38675.00",
+   "traded_amount": "21099367.00",
+   "status": 1,
+   "DT_Row_Index": 2
+  },
+  {
+   "published_date": "2026-10-14",
+   "open": "539.00",
+   "high": "543.00",
+   "low": "538.00",
+   "close": "541.00",
+   "per_change": "0.37",
+   "traded_quantity": "55494.00",
+   "traded_amount": "29977823.40",
+   "status": 1,
+   "DT_Row_Index": 3
+  }
+ ]
+}

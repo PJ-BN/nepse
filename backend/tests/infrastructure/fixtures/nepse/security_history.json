@@ -1,0 +1,74 @@
+{
+ "content": [
+  {
+   "businessDate": "2026-10-16",
+   "totalTrades": 280,
+   "totalTradedQuantity": 30945,
+   "totalTradedValue": 16936213.9,
+   "highPrice": 549.2,
+   "lowPrice": 544,
+   "closePrice": 547
+  },
+  {
+   "businessDate": "2026-10-15",
+   "totalTrades": 288,
+   "totalTradedQuantity": 38675,
+   "totalTradedValue": 21099367,
+   "highPrice": 548,
+   "lowPrice": 541,
+   "closePrice": 546
+  },
+  {
+   "businessDate": "2026-10-14",
+   "totalTrades": 336,
+   "totalTradedQuantity": 55494,
+   "totalTradedValue": 29977823.4,
+   "highPrice": 543,
+   "lowPrice": 538,
+   "closePrice": 541
+  },
+  {
+   "businessDate": "2026-10-13",
+   "totalTrades": 336,
+   "totalTradedQuantity": 29226,
+   "totalTradedValue": 15729097.7,
+   "highPrice": 541,
+   "lowPrice": 536.2,
+   "closePrice": 539
+  },
+  {
+   "businessDate": "2026-10-12",
+   "totalTrades": 401,
+   "totalTradedQuantity": 44519,
+   "totalTradedValue": 23948469.3,
+   "highPrice": 539,
+   "lowPrice": 536,
+   "closePrice": 537.1
+  }
+ ],
+ "pageable": {
+  "sort": {
+   "sorted": false,
+   "unsorted": true,
+   "empty": true
+  },
+  "pageSize": 500,
+  "pageNumber": 0,
+  "offset": 0,
+  "paged": true,
+  "unpaged": false
+ },
+ "totalPages": 1,
+ "totalElements": 234,
+ "last": true,
+ "number": 0,
+ "size": 500,
+ "numberOfElements": 234,
+ "sort": {
+  "sorted": false,
+  "unsorted": true,
+  "empty": true
+ },
+ "first": true,
+ "empty": false
+}

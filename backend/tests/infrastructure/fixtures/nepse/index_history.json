@@ -1,0 +1,77 @@
+{
+ "content": [
+  {
+   "id": 69792,
+   "businessDate": "2026-10-16",
+   "exchangeIndexId": 51,
+   "closingIndex": 1574.47,
+   "openIndex": 1566.41,
+   "highIndex": 1576.84,
+   "lowIndex": 1558.64,
+   "fiftyTwoWeekHigh": 1574.47,
+   "fiftyTwoWeekLow": 1327.01,
+   "turnoverValue": 1176079273.9,
+   "turnoverVolume": 4377495,
+   "totalTransaction": 7853,
+   "absChange": 11.4,
+   "percentageChange": 0.72
+  },
+  {
+   "id": 69775,
+   "businessDate": "2026-10-15",
+   "exchangeIndexId": 51,
+   "closingIndex": 1563.07,
+   "openIndex": 1570.16,
+   "highIndex": 1576.81,
+   "lowIndex": 1558.02,
+   "fiftyTwoWeekHigh": 1567.1,
+   "fiftyTwoWeekLow": 1327.01,
+   "turnoverValue": 1331230454.3,
+   "turnoverVolume": 4820365,
+   "totalTransaction": 9567,
+   "absChange": -2.61,
+   "percentageChange": -0.16
+  },
+  {
+   "id": 69758,
+   "businessDate": "2026-10-14",
+   "exchangeIndexId": 51,
+   "closingIndex": 1565.68,
+   "openIndex": 1558.37,
+   "highIndex": 1566.21,
+   "lowIndex": 1536.66,
+   "fiftyTwoWeekHigh": 1567.1,
+   "fiftyTwoWeekLow": 1327.01,
+   "turnoverValue": 1268576655.41,
+   "turnoverVolume": 4513149,
+   "totalTransaction": 9938,
+   "absChange": 22.44,
+   "percentageChange": 1.45
+  }
+ ],
+ "pageable": {
+  "sort": {
+   "sorted": false,
+   "unsorted": true,
+   "empty": true
+  },
+  "pageSize": 3,
+  "pageNumber": 0,
+  "offset": 0,
+  "paged": true,
+  "unpaged": false
+ },
+ "totalPages": 79,
+ "totalElements": 235,
+ "last": false,
+ "number": 0,
+ "size": 3,
+ "numberOfElements": 3,
+ "sort": {
+  "sorted": false,
+  "unsorted": true,
+  "empty": true
+ },
+ "first": true,
+ "empty": false
+}

@@ -1,0 +1,30 @@
+[
+ {
+  "id": 2790,
+  "symbol": "ACLBSL",
+  "securityName": "Aarambha Chautari Laghubitta Bittiya Sanstha Limited",
+  "name": "(ACLBSL) Aarambha Chautari Laghubitta Bittiya Sanstha Limited",
+  "activeStatus": "A"
+ },
+ {
+  "id": 131,
+  "symbol": "NABIL",
+  "securityName": "Nabil Bank Limited",
+  "name": "(NABIL) Nabil Bank Limited",
+  "activeStatus": "A"
+ },
+ {
+  "id": 187,
+  "symbol": "NLIC",
+  "securityName": "Nepal Life Insurance Co. Ltd.",
+  "name": "(NLIC) Nepal Life Insurance Co. Ltd.",
+  "activeStatus": "A"
+ },
+ {
+  "id": 2776,
+  "symbol": "RADHI",
+  "securityName": "Radhi Bidyut Company Ltd",
+  "name": "(RADHI) Radhi Bidyut Company Ltd",
+  "activeStatus": "A"
+ }
+]

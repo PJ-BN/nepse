@@ -1,0 +1,43 @@
+{
+ "draw": 1,
+ "recordsTotal": 16,
+ "recordsFiltered": 16,
+ "data": [
+  {
+   "bonus_share": "5.00",
+   "cash_dividend": "10.8",
+   "total_dividend": "15.8",
+   "announcement_date": "2026-09-07",
+   "distribution_date": "",
+   "bookclose_date": "2026-09-30 [Closed]",
+   "bonus_listing_date": null,
+   "year": "2082/2083",
+   "status": 1,
+   "DT_Row_Index": 1
+  },
+  {
+   "bonus_share": "0.00",
+   "cash_dividend": "12.5",
+   "total_dividend": "12.5",
+   "announcement_date": "2025-12-07",
+   "distribution_date": "",
+   "bookclose_date": "2025-12-31 [Closed]",
+   "bonus_listing_date": null,
+   "year": "2081/2082",
+   "status": 1,
+   "DT_Row_Index": 2
+  },
+  {
+   "bonus_share": "",
+   "cash_dividend": "10.00",
+   "total_dividend": "10.00",
+   "announcement_date": "2024-10-30",
+   "distribution_date": "",
+   "bookclose_date": "2024-11-25 [Closed]",
+   "bonus_listing_date": null,
+   "year": "2080/2081",
+   "status": 1,
+   "DT_Row_Index": 3
+  }
+ ]
+}
