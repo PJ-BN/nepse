@@ -4,14 +4,14 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from nepse.application.charting.get_history import get_history
+from nepse.application.charting.get_history import INTRADAY, get_history, get_intraday_history
 from nepse.application.charting.ports import SymbolInfo
 from nepse.infrastructure.db.repositories.charting import SqlChartRepository
 from nepse.infrastructure.db.session import SessionLocal
 
 router = APIRouter(prefix="/api/v1/udf", tags=["udf"])
 
-RESOLUTIONS = ["1D"]  # ponytail: daily only; intraday needs a bars source from floorsheet_ticks
+RESOLUTIONS = [*INTRADAY, "1D"]
 
 
 async def chart_repo() -> AsyncIterator[SqlChartRepository]:
@@ -48,7 +48,8 @@ async def symbols(symbol: str, repo: SqlChartRepository = Depends(chart_repo)) -
         "exchange": "NEPSE", "listed_exchange": "NEPSE", "sector": info.sector,
         "session": "1100-1500:12345",  # Sun..Thu in TradingView's 1=Sunday numbering
         "timezone": "Asia/Kathmandu", "minmov": 1, "pricescale": 100, "volume_precision": 0,
-        "has_intraday": False, "has_daily": True, "supported_resolutions": RESOLUTIONS, "data_status": "endofday",
+        "has_intraday": True, "intraday_multipliers": list(INTRADAY), "has_daily": True,
+        "supported_resolutions": RESOLUTIONS, "data_status": "endofday",
     }
 
 
@@ -68,7 +69,13 @@ async def history(
     adjusted: bool = True,
     repo: SqlChartRepository = Depends(chart_repo),
 ) -> dict:
-    if resolution.upper() not in ("1D", "D"):
+    res = resolution.upper()
+    symbol = symbol.split(":")[-1].upper()
+    if res in INTRADAY:
+        return await get_intraday_history(
+            repo, symbol, datetime.fromtimestamp(from_, UTC), datetime.fromtimestamp(to, UTC), res
+        )
+    if res not in ("1D", "D"):
         return {"s": "error", "errmsg": f"unsupported resolution {resolution}"}
     start, end = (datetime.fromtimestamp(t, UTC).date() for t in (from_, to))
-    return await get_history(repo, symbol.split(":")[-1].upper(), start, end, adjusted)
+    return await get_history(repo, symbol, start, end, adjusted)

@@ -13,3 +13,9 @@ export type UdfSearchItem = {
 };
 
 export type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number };
+
+/** A horizontal price line drawn over the candles (e.g. a broker VWAP). */
+export type PriceOverlay = { price: number; title: string; color: string };
+
+export const RESOLUTIONS = ["1", "5", "15", "60", "1D"] as const;
+export type Resolution = (typeof RESOLUTIONS)[number];

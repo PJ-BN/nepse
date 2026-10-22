@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import Protocol
 
 from nepse.domain.corporate_actions.adjustment import CorporateAction
@@ -17,6 +17,16 @@ class Bar:
 
 
 @dataclass(frozen=True)
+class IntradayBar:
+    ts: datetime
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
+
+
+@dataclass(frozen=True)
 class SymbolInfo:
     symbol: str
     name: str
@@ -25,6 +35,7 @@ class SymbolInfo:
 
 class ChartRepository(Protocol):
     async def bars(self, symbol: str, start: date, end: date) -> list[Bar]: ...
+    async def intraday_bars(self, symbol: str, start: datetime, end: datetime, minutes: int) -> list[IntradayBar]: ...
     async def last_date_before(self, symbol: str, d: date) -> date | None: ...
     async def find_symbol(self, symbol: str) -> SymbolInfo | None: ...
     async def search_symbols(self, query: str, limit: int) -> list[SymbolInfo]: ...

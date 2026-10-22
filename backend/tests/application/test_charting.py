@@ -1,9 +1,9 @@
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 
-from nepse.application.charting.get_history import get_history, to_unix
-from nepse.application.charting.ports import Bar
+from nepse.application.charting.get_history import get_history, get_intraday_history, to_unix
+from nepse.application.charting.ports import Bar, IntradayBar
 from nepse.application.charting.recompute_adjustments import recompute_adjustments
 from nepse.domain.corporate_actions.adjustment import CorporateAction
 
@@ -57,3 +57,19 @@ async def test_recompute_writes_daily_and_action_factors():
     daily, per_action = repo.saved
     assert [f for _, f in daily] == pytest.approx([0.8, 0.8, 1.0, 1.0])
     assert per_action[0][0] == 7 and per_action[0][1] == pytest.approx(0.8)
+
+
+async def test_intraday_history_flattens_bars():
+    class Repo:
+        async def intraday_bars(self, symbol, start, end, minutes):
+            assert minutes == 5
+            return [IntradayBar(datetime(2025, 1, 5, 5, 15, tzinfo=UTC), 10, 12, 9, 11, 300)]
+
+    out = await get_intraday_history(Repo(), "X", datetime(2025, 1, 5, tzinfo=UTC), datetime(2025, 1, 6, tzinfo=UTC), "5")
+    assert out == {"s": "ok", "t": [1736054100], "o": [10], "h": [12], "l": [9], "c": [11], "v": [300]}
+
+    class Empty:
+        async def intraday_bars(self, *a):
+            return []
+
+    assert await get_intraday_history(Empty(), "X", datetime(2025, 1, 5, tzinfo=UTC), datetime(2025, 1, 6, tzinfo=UTC), "1") == {"s": "no_data"}
