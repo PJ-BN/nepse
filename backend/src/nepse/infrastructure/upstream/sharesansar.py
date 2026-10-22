@@ -123,7 +123,8 @@ def nav_rows(rows: list[dict]) -> list[tuple[str, NavRow]]:
     """Funds with no weekly NAV yet are skipped; the NAV date is the weekly one (monthly is a BS month label)."""
     return [
         (r["symbol"], NavRow(nav_date=nav_date, weekly_nav=float(r["weekly_nav_price"]),
-                             monthly_nav=float(r["monthly_nav_price"]) if r.get("monthly_nav_price") else None))
+                             monthly_nav=float(r["monthly_nav_price"]) if r.get("monthly_nav_price") else None,
+                             maturity_date=_date(r.get("maturity_date"))))
         for r in rows if r.get("weekly_nav_price") and (nav_date := _date(r.get("weekly_date")))
     ]
 

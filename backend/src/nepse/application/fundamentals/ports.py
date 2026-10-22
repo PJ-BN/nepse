@@ -89,6 +89,7 @@ class NavRow:
     nav_date: date
     weekly_nav: float | None
     monthly_nav: float | None
+    maturity_date: date | None = None  # the fund's redemption date, as published with the NAV
 
 
 class SnapshotSource(Protocol):

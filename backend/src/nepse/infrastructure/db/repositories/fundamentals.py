@@ -107,7 +107,8 @@ class SqlFundamentalsRepository:
     async def latest_nav(self, company_id: int) -> NavRow | None:
         r = await self.s.scalar(select(MutualFundNav).where(MutualFundNav.company_id == company_id)
                                 .order_by(MutualFundNav.nav_date.desc()).limit(1))
-        return r and NavRow(nav_date=r.nav_date, weekly_nav=_f(r.weekly_nav), monthly_nav=_f(r.monthly_nav))
+        return r and NavRow(nav_date=r.nav_date, weekly_nav=_f(r.weekly_nav), monthly_nav=_f(r.monthly_nav),
+                            maturity_date=r.maturity_date)
 
     async def upsert_navs(self, company_id: int, rows: list[NavRow]) -> int:
         if not rows:
@@ -115,6 +116,6 @@ class SqlFundamentalsRepository:
         stmt = insert(MutualFundNav).values([{"company_id": company_id, **asdict(r)} for r in rows])
         await self.s.execute(stmt.on_conflict_do_update(
             index_elements=[MutualFundNav.company_id, MutualFundNav.nav_date],
-            set_={c: stmt.excluded[c] for c in ("weekly_nav", "monthly_nav")}))
+            set_={c: stmt.excluded[c] for c in ("weekly_nav", "monthly_nav", "maturity_date")}))
         await self.s.commit()
         return len(rows)

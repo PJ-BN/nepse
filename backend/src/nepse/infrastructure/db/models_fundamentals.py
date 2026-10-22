@@ -45,3 +45,4 @@ class MutualFundNav(Base):
     nav_date: Mapped[date] = mapped_column(Date, primary_key=True)
     weekly_nav: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
     monthly_nav: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    maturity_date: Mapped[date | None] = mapped_column(Date)

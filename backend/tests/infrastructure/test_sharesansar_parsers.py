@@ -60,3 +60,4 @@ def test_nav_rows_skip_funds_without_weekly_nav():
     assert [s for s, _ in rows] == ["SEF", "NBF2"]
     assert rows[0][1].nav_date == date(2026, 10, 2) and rows[0][1].weekly_nav == 10.52 and rows[0][1].monthly_nav == 10.49
     assert rows[1][1].monthly_nav is None
+    assert rows[0][1].maturity_date == date(2027, 11, 8)
