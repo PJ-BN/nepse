@@ -11,6 +11,7 @@ from decimal import Decimal, InvalidOperation
 import httpx
 from selectolax.lexbor import LexborHTMLParser
 
+from nepse.application.fundamentals.ports import NavRow
 from nepse.domain.market.entities import CorporateActionRecord, DailyBar
 
 BASE_URL = "https://www.sharesansar.com/"
@@ -118,6 +119,15 @@ def right_rows(symbol: str, rows: list[dict]) -> list[CorporateActionRecord]:
     return out
 
 
+def nav_rows(rows: list[dict]) -> list[tuple[str, NavRow]]:
+    """Funds with no weekly NAV yet are skipped; the NAV date is the weekly one (monthly is a BS month label)."""
+    return [
+        (r["symbol"], NavRow(nav_date=nav_date, weekly_nav=float(r["weekly_nav_price"]),
+                             monthly_nav=float(r["monthly_nav_price"]) if r.get("monthly_nav_price") else None))
+        for r in rows if r.get("weekly_nav_price") and (nav_date := _date(r.get("weekly_date")))
+    ]
+
+
 def merge_actions(actions: list[CorporateActionRecord]) -> list[CorporateActionRecord]:
     """One record per (symbol, book closure date): a bonus and a right closing the same day are one event."""
     merged: dict[tuple[str, date], CorporateActionRecord] = {}
@@ -158,6 +168,13 @@ class ShareSansarClient:
         res = await self._http.get("today-share-price")
         res.raise_for_status()
         return today_price_rows(res.text)
+
+    async def mutual_fund_navs(self) -> list[tuple[str, NavRow]]:
+        """Closed-end funds' latest weekly/monthly NAV (the DataTables feed behind /mutual-fund-navs)."""
+        res = await self._http.get("mutual-fund-navs", params={"draw": 1, "start": 0, "length": PAGE_SIZE, "type": -1},
+                                   headers={"X-Requested-With": "XMLHttpRequest"})
+        res.raise_for_status()
+        return nav_rows(res.json()["data"])
 
     async def history(self, symbol: str, since: date) -> tuple[list[DailyBar], list[CorporateActionRecord]]:
         """Daily bars from `since` to today (newest first upstream) plus every dividend/right record."""

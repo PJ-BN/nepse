@@ -53,3 +53,10 @@ def test_today_price_rows():
     assert (first.trade_date, first.open, first.close, first.prev_close, first.volume, first.transactions) == (
         date(2026, 10, 16), Decimal("850.00"), Decimal("850.00"), Decimal("840.00"), 892, 8)
     assert first.turnover == Decimal("762325.00")
+
+
+def test_nav_rows_skip_funds_without_weekly_nav():
+    rows = ss.nav_rows(load("mutual_fund_navs")["data"])
+    assert [s for s, _ in rows] == ["SEF", "NBF2"]
+    assert rows[0][1].nav_date == date(2026, 10, 2) and rows[0][1].weekly_nav == 10.52 and rows[0][1].monthly_nav == 10.49
+    assert rows[1][1].monthly_nav is None

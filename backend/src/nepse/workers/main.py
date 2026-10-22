@@ -78,7 +78,7 @@ def daily_jobs(repo: SqlIngestionRepository) -> list[DailyJob]:
 
     async def navs():
         async with SessionLocal() as session:
-            return await ingest_navs(nepalipaisa, SqlFundamentalsRepository(session))
+            return await ingest_navs(sharesansar.ShareSansarClient(sharesansar_http), SqlFundamentalsRepository(session))
 
     async def paisa():
         return await fundamentals(nepalipaisa), await navs()

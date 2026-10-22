@@ -2,8 +2,7 @@
 
 Real site vs. the Blueprint: there is no JSON "fundamentals" endpoint. The company page renders EPS/BVPS/paid-up
 server-side (parsed as HTML); dividends and the promoter/public split are JSON under /api/ (the same calls the
-site's company.js makes). Mutual-fund NAVs use the Blueprint's GetMutualFundNavs endpoint, which is UNVERIFIED: the live site
-returned 404 for it (2026-10), so the NAV job logs an UpstreamError until the real path/shape is confirmed.
+site's company.js makes). The Blueprint's GetMutualFundNavs endpoint 404s (2026-10); mutual-fund NAVs come from ShareSansar.
 """
 import asyncio
 import re
@@ -13,7 +12,7 @@ from datetime import date
 import httpx
 from selectolax.lexbor import LexborHTMLParser
 
-from nepse.application.fundamentals.ports import DividendRecord, FinancialSnapshot, NavRow, Ownership, UpstreamError
+from nepse.application.fundamentals.ports import DividendRecord, FinancialSnapshot, Ownership, UpstreamError
 from nepse.domain.fundamentals.fiscal_year import normalize_fy
 from nepse.domain.fundamentals.sector_metrics import sector_code_from_name
 
@@ -94,15 +93,6 @@ def parse_ownership(payload: dict) -> Ownership | None:
                      public_shares=int(float(r["publicShareCount"])), listed_shares=int(float(r["listedShares"])))
 
 
-def parse_navs(payload: dict) -> list[tuple[str, NavRow]]:
-    rows = (_result(payload, "navs") or {}).get("data") or []
-    return [
-        (r["stockSymbol"], NavRow(nav_date=date.fromisoformat(r["navDateAD"][:10]),
-                                  weekly_nav=_num(r.get("weeklyNav")), monthly_nav=_num(r.get("monthlyNav"))))
-        for r in rows if r.get("stockSymbol") and r.get("navDateAD")
-    ]
-
-
 class NepaliPaisaClient:
     async def _get(self, path: str, params: dict | None = None) -> httpx.Response:
         await _polite()
@@ -125,6 +115,3 @@ class NepaliPaisaClient:
     async def ownership(self, symbol: str) -> Ownership | None:
         return parse_ownership((await self._get("/api/GetOwnership", {"stockSymbol": symbol})).json())
 
-    async def mutual_fund_navs(self) -> list[tuple[str, NavRow]]:
-        r = await self._get("/api/GetMutualFundNavs", {"pageNo": 1, "itemsPerPage": 500, "pagePerDisplay": 5})
-        return parse_navs(r.json())
