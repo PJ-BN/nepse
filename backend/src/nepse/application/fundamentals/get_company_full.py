@@ -2,7 +2,7 @@
 from dataclasses import asdict
 from datetime import date
 
-from nepse.application.fundamentals.ports import FundamentalsRepository, LiveQuotes
+from nepse.application.fundamentals.ports import DepthProvider, FundamentalsRepository, LiveQuotes
 from nepse.domain.fundamentals import valuation as v
 from nepse.domain.fundamentals.sector_metrics import load_sector_metrics
 
@@ -17,7 +17,7 @@ def _r(x: float | None, nd: int = 2) -> float | None:
 
 async def get_company_full(symbol: str, repo: FundamentalsRepository, today: date, quotes: LiveQuotes | None = None,
                            risk_free_rate: float = DEFAULT_RISK_FREE_RATE,
-                           dcf_growth: float = DEFAULT_DCF_GROWTH) -> dict | None:
+                           dcf_growth: float = DEFAULT_DCF_GROWTH, depth: DepthProvider | None = None) -> dict | None:
     symbol = symbol.upper()
     company = await repo.company(symbol)
     if company is None:
@@ -91,5 +91,6 @@ async def get_company_full(symbol: str, repo: FundamentalsRepository, today: dat
         "flags": [asdict(f) for f in flags],
         "valuation": valuation,
         "dividends": [asdict(d) for d in await repo.dividends(company.id)],
+        "depth": await depth.depth(symbol, company.nepse_id) if depth and company.nepse_id else None,
         "lockin": {"expiry": lockin_expiry, "days_left": v.lockin_countdown(lockin_expiry, today)},
     }

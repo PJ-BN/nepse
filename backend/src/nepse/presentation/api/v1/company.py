@@ -9,11 +9,15 @@ from nepse.application.fundamentals.get_company_full import DEFAULT_RISK_FREE_RA
 from nepse.application.fundamentals.ingest import ingest_dividends, ingest_financials
 from nepse.application.fundamentals.ports import UpstreamError
 from nepse.domain.calendar.npt import now_npt
+from nepse.application.market.get_depth import depth_dict, get_depth
 from nepse.infrastructure.cache.redis_client import redis
+from nepse.infrastructure.cache.redis_live_store import RedisLiveStore
 from nepse.infrastructure.db.repositories.fundamentals import SqlFundamentalsRepository
 from nepse.infrastructure.db.session import SessionLocal
 from nepse.infrastructure.upstream.merolagani import MeroLaganiClient
 from nepse.infrastructure.upstream.nepalipaisa import NepaliPaisaClient
+from nepse.infrastructure.upstream.nepse.client import NepseClient, new_http_client
+from nepse.infrastructure.upstream.nepse.wasm_token import TokenSolver
 
 router = APIRouter(prefix="/api/v1/company", tags=["company"])
 
@@ -33,10 +37,24 @@ class RedisQuotes:
         return json.loads(raw) if raw else None
 
 
+class LiveDepth:
+    """Order book fetched on demand and cached in Redis for a few seconds; the page renders without it."""
+    _client: NepseClient | None = None
+
+    async def depth(self, symbol: str, nepse_id: int) -> dict | None:
+        try:
+            if LiveDepth._client is None:  # ponytail: one shared client per API process, never closed
+                LiveDepth._client = NepseClient(new_http_client(), redis, TokenSolver())
+            return depth_dict(await get_depth(symbol, nepse_id, LiveDepth._client, RedisLiveStore(redis)))
+        except Exception:  # upstream down / token solver failure
+            return None
+
+
 @router.get("/{symbol}/full")
 async def company_full(symbol: str, risk_free_rate: float = DEFAULT_RISK_FREE_RATE,
                        repo: SqlFundamentalsRepository = Depends(_repo)) -> dict:
-    data = await get_company_full(symbol, repo, now_npt().date(), RedisQuotes(), risk_free_rate=risk_free_rate)
+    data = await get_company_full(symbol, repo, now_npt().date(), RedisQuotes(), risk_free_rate=risk_free_rate,
+                                  depth=LiveDepth())
     if data is None:
         raise HTTPException(404, f"unknown symbol {symbol.upper()}")
     return data

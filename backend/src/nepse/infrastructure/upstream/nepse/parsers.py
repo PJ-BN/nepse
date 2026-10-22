@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from nepse.application.ingestion.ports import MarketOpen
 from nepse.domain.calendar.npt import NPT
+from nepse.domain.market.depth import DepthLevel, MarketDepth
 from nepse.domain.market.entities import DailyBar, FloorsheetTick, IndexBar, IndexTick, ListedCompany, Quote
 
 # NEPSE exchange index id -> our index code (ids from GET nots/index)
@@ -130,3 +131,18 @@ def _base_name(name: str) -> str:
     """'Asian Life Insurance Co. Ltd Promoter Share' -> 'asian life insurance co. ltd' (for parent lookup)."""
     name = name.lower()
     return name[: name.index("promoter")].strip() if "promoter" in name else name.strip()
+
+
+DEPTH_LEVELS = 5
+
+
+def market_depth(symbol: str, data: dict, ts: datetime) -> MarketDepth:
+    """nots/nepse-data/marketdepth/{id}: the book arrives best-first; keep the top 5 per side."""
+    book = data.get("marketDepth") or {}
+
+    def levels(rows: list[dict] | None) -> tuple[DepthLevel, ...]:
+        return tuple(DepthLevel(float(r["orderBookOrderPrice"]), int(r["quantity"]), int(r["orderCount"]))
+                     for r in (rows or [])[:DEPTH_LEVELS])
+
+    return MarketDepth(symbol, levels(book.get("buyMarketDepthList")), levels(book.get("sellMarketDepthList")),
+                       int(data.get("totalBuyQty") or 0), int(data.get("totalSellQty") or 0), ts)

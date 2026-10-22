@@ -23,6 +23,11 @@ export function Dashboard() {
 
   return (
     <div className="space-y-4">
+      {summary.status === "HALTED" && (
+        <div role="alert" className="rounded bg-red-600 px-3 py-2 text-sm font-semibold text-white">
+          Trading halted: NEPSE index circuit breaker triggered. Trading resumes automatically when the halt ends.
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <span className={`rounded px-2 py-0.5 text-xs font-semibold ${STATUS_STYLE[summary.status] ?? ""}`}>
           {summary.status.replace("_", " ")}

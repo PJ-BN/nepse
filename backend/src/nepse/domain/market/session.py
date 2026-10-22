@@ -1,6 +1,7 @@
 """NEPSE trading-session and circuit-breaker rules."""
 from collections.abc import Container
-from datetime import date, datetime, time
+from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta
 from enum import StrEnum
 
 from nepse.domain.calendar.npt import NPT
@@ -15,7 +16,7 @@ DAILY_BAND = 0.10
 class MarketStatus(StrEnum):
     PRE_OPEN = "PRE_OPEN"
     OPEN = "OPEN"
-    HALTED = "HALTED"  # only known from upstream data, never inferred from the clock
+    HALTED = "HALTED"  # inferred from the NEPSE index move (index_halt), not from the clock
     CLOSED = "CLOSED"
 
 
@@ -57,3 +58,27 @@ def index_halt(change_pct: float, minutes_since_open: float) -> Halt:
     if move >= 4 and minutes_since_open <= 60:
         return Halt.MIN_20
     return Halt.NONE
+
+
+HALT_SEVERITY = {Halt.NONE: 0, Halt.MIN_20: 1, Halt.MIN_40: 2, Halt.REST_OF_DAY: 3}
+HALT_MINUTES = {Halt.MIN_20: 20, Halt.MIN_40: 40}
+
+
+@dataclass(frozen=True, slots=True)
+class HaltState:
+    level: Halt
+    until: datetime  # trading resumes here (NPT); the close for REST_OF_DAY
+
+
+def next_halt(prev: HaltState | None, change_pct: float, now: datetime) -> HaltState | None:
+    """Today's latest halt after seeing the index move. A halt only (re)triggers on a higher level than the last."""
+    now = now.astimezone(NPT)
+    if prev and prev.until.astimezone(NPT).date() != now.date():
+        prev = None
+    start = now.replace(hour=CONTINUOUS_START.hour, minute=0, second=0, microsecond=0)
+    level = index_halt(change_pct, (now - start).total_seconds() / 60)
+    if HALT_SEVERITY[level] <= HALT_SEVERITY[prev.level if prev else Halt.NONE]:
+        return prev
+    close = now.replace(hour=CONTINUOUS_END.hour, minute=0, second=0, microsecond=0)
+    until = close if level is Halt.REST_OF_DAY else min(now + timedelta(minutes=HALT_MINUTES[level]), close)
+    return HaltState(level, until)

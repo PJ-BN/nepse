@@ -1,0 +1,58 @@
+{
+ "totalBuyQty": 5200,
+ "totalSellQty": 4100,
+ "marketDepth": {
+  "buyMarketDepthList": [
+   {
+    "stockId": 131,
+    "orderBookOrderPrice": 510.0,
+    "quantity": 1000,
+    "orderCount": 3
+   },
+   {
+    "stockId": 131,
+    "orderBookOrderPrice": 509.5,
+    "quantity": 800,
+    "orderCount": 2
+   },
+   {
+    "stockId": 131,
+    "orderBookOrderPrice": 509.0,
+    "quantity": 1200,
+    "orderCount": 5
+   },
+   {
+    "stockId": 131,
+    "orderBookOrderPrice": 508.0,
+    "quantity": 700,
+    "orderCount": 1
+   },
+   {
+    "stockId": 131,
+    "orderBookOrderPrice": 507.5,
+    "quantity": 500,
+    "orderCount": 2
+   },
+   {
+    "stockId": 131,
+    "orderBookOrderPrice": 507.0,
+    "quantity": 1000,
+    "orderCount": 4
+   }
+  ],
+  "sellMarketDepthList": [
+   {
+    "stockId": 131,
+    "orderBookOrderPrice": 510.5,
+    "quantity": 600,
+    "orderCount": 2
+   },
+   {
+    "stockId": 131,
+    "orderBookOrderPrice": 511.0,
+    "quantity": 900,
+    "orderCount": 3
+   }
+  ]
+ }
+}

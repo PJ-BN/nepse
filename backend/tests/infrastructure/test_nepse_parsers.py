@@ -64,3 +64,10 @@ def test_promoter_shares_inherit_parent_sector():
                   {"id": 2, "symbol": "ALICLP", "securityName": "Asian Life Insurance Co. Ltd Promoter Share", "activeStatus": "A"}]
     promoter = {c.symbol: c for c in parsers.listed_companies(companies, securities)}["ALICLP"]
     assert (promoter.instrument_type, promoter.sector_code, promoter.nepse_id) == ("PROMOTER", "LIFEINSU", 2)
+
+
+def test_market_depth_keeps_top_five_per_side():
+    d = parsers.market_depth("NABIL", load("market_depth"), parsers.npt("2026-10-16 11:30:00"))
+    assert len(d.buy) == 5 and len(d.sell) == 2
+    assert (d.buy[0].price, d.buy[0].qty, d.buy[0].orders) == (510.0, 1000, 3)
+    assert (d.total_buy_qty, d.total_sell_qty) == (5200, 4100)

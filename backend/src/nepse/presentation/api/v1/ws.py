@@ -9,7 +9,7 @@ from nepse.infrastructure.cache.redis_client import redis
 
 router = APIRouter()
 
-TOPICS = {"quote", "index", "status", "whale"}
+TOPICS = {"quote", "index", "status", "whale", "depth"}
 
 
 async def _read_subscriptions(ws: WebSocket, topics: set[str]) -> None:

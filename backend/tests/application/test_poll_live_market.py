@@ -32,3 +32,15 @@ async def test_upstream_closed_reports_closed_during_clock_hours():
     result = await poll_live_market(FakeSource(is_open=False), store, TS)
     assert result.status is MarketStatus.CLOSED
     assert store.events == [("status", "CLOSED")]
+
+
+async def test_index_circuit_breaker_halts_then_resumes():
+    store = FakeStore()
+    drop = FakeSource(indices=[IndexTick("NEPSE", 2500, -110, -4.2, None, TS)])
+    at_1130 = TS.replace(hour=11, minute=30)
+    assert (await poll_live_market(drop, store, at_1130)).status is MarketStatus.HALTED
+    assert store.status is MarketStatus.HALTED
+    assert (await poll_live_market(drop, store, at_1130.replace(minute=45))).status is MarketStatus.HALTED
+    after = at_1130.replace(hour=11, minute=51)
+    assert (await poll_live_market(drop, store, after)).status is MarketStatus.OPEN  # 20 min served, same level
+    assert store.events[-1] == ("status", "OPEN")

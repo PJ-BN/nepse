@@ -9,6 +9,7 @@ from redis.asyncio import Redis
 
 from nepse.application.ingestion.ports import MarketOpen
 from nepse.domain.calendar.npt import now_npt
+from nepse.domain.market.depth import MarketDepth
 from nepse.domain.market.entities import DailyBar, FloorsheetTick, IndexBar, IndexTick, ListedCompany, Quote
 from nepse.infrastructure.upstream.nepse import parsers
 from nepse.infrastructure.upstream.nepse.payload_id import PayloadKind, payload_id
@@ -80,6 +81,9 @@ class NepseClient:
         ts = now_npt()
         main, sub = await self._get("nots/nepse-index"), await self._get("nots")
         return parsers.index_ticks(main, ts) + parsers.index_ticks(sub, ts)
+
+    async def market_depth(self, symbol: str, nepse_id: int) -> MarketDepth:
+        return parsers.market_depth(symbol, await self._get(f"nots/nepse-data/marketdepth/{nepse_id}"), now_npt())
 
     async def listed_companies(self) -> list[ListedCompany]:
         companies = await self._get("nots/company/list")

@@ -57,6 +57,9 @@ export type Dividend = {
   book_closure_date: string | null;
 };
 
+export type DepthLevel = { price: number; qty: number; orders: number };
+export type Depth = { symbol: string; buy: DepthLevel[]; sell: DepthLevel[]; total_buy_qty: number; total_sell_qty: number; ts: string };
+
 export type CompanyFull = {
   profile: Profile;
   price: { ltp: number | null; source: "live" | "eod" | null; as_of: string | null; high_52w: number | null; low_52w: number | null };
@@ -66,5 +69,6 @@ export type CompanyFull = {
   flags: Flag[];
   valuation: Valuation;
   dividends: Dividend[];
+  depth: Depth | null;
   lockin: { expiry: string | null; days_left: number | null };
 };

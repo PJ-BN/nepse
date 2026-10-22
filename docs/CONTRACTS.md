@@ -40,9 +40,12 @@ All paths are relative to `backend/src/nepse/` or the repo root. Each branch als
   `{"symbol","ltp","open","high","low","prev_close","change","pct_change","volume","turnover","ts"}`
 - `nepse:live:indices`: a hash keyed by index code (`NEPSE`, `BANKING`, …). Each value is JSON:
   `{"code","value","change","pct_change","turnover","ts"}`
-- Pub/sub channel `nepse:live:events`: each message is JSON `{"topic": "quote"|"index"|"status"|"whale", "data": {...}}`.
+- Pub/sub channel `nepse:live:events`: each message is JSON `{"topic": "quote"|"index"|"status"|"whale"|"depth", "data": {...}}`.
   - For `quote` and `index`, `data` holds only the entries that changed.
   - For `whale`, `data` is `{"contract_no","symbol","buyer_broker","seller_broker","qty","rate","amount","trade_time"}`.
+- `nepse:live:depth:{symbol}`: JSON `{"symbol","buy":[{"price","qty","orders"}],"sell":[...],"total_buy_qty","total_sell_qty","ts"}`
+  (top 5 per side), fetched on demand by `GET /company/{symbol}/full` and expiring after 10s. Also published as `depth` events (`data` is `{symbol: depth}`).
+- `nepse:live:halt`: JSON `{"level","until"}`, the day's latest index circuit-breaker halt; while `now < until` the status is `HALTED`.
 - `ts` is an ISO-8601 timestamp in NPT.
 
 ## WebSocket (`/api/v1/ws/live`, owned by `feat/charting`)

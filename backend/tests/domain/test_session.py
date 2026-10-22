@@ -40,3 +40,19 @@ def test_index_circuit_breakers():
     assert index_halt(5.0, 90) is Halt.MIN_40
     assert index_halt(5.5, 200) is Halt.NONE
     assert index_halt(-6.0, 250) is Halt.REST_OF_DAY
+
+
+def test_next_halt_triggers_once_per_level_and_caps_at_close():
+    from nepse.domain.market.session import Halt, next_halt
+    t = at(SUNDAY, 11, 30)
+    assert next_halt(None, 3.9, t) is None
+    h = next_halt(None, -4.1, t)
+    assert (h.level, h.until) == (Halt.MIN_20, at(SUNDAY, 11, 50))
+    assert next_halt(h, -4.2, at(SUNDAY, 11, 55)) is h  # same level does not retrigger
+    h2 = next_halt(h, 5.2, at(SUNDAY, 12, 0))
+    assert (h2.level, h2.until) == (Halt.MIN_40, at(SUNDAY, 12, 40))
+    h3 = next_halt(h2, 6, at(SUNDAY, 14, 0))
+    assert (h3.level, h3.until) == (Halt.REST_OF_DAY, at(SUNDAY, 15, 0))
+    assert next_halt(h3, 0, at(SUNDAY, 14, 30)) is h3
+    assert next_halt(h3, 4.5, at(date(2025, 4, 21), 11, 10)).level is Halt.MIN_20  # next day starts fresh
+    assert next_halt(None, 4.5, at(SUNDAY, 12, 30)) is None  # 4% only counts in the first hour
