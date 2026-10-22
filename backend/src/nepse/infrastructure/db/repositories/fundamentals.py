@@ -32,7 +32,7 @@ class SqlFundamentalsRepository:
         return CompanyRow(id=c.id, symbol=c.symbol, name=c.name, sector_code=code, instrument_type=c.instrument_type,
                           listed_shares=c.listed_shares, public_shares=c.public_shares,
                           promoter_shares=c.promoter_shares, paid_up_capital=_f(c.paid_up_capital),
-                          listing_date=c.listing_date, promoter_lockin_expiry=c.promoter_lockin_expiry)
+                          listing_date=c.listing_date, promoter_lockin_expiry=c.promoter_lockin_expiry, nepse_id=c.nepse_id)
 
     async def create_company(self, symbol: str, name: str, sector_code: str | None) -> CompanyRow:
         sector_id = await self.s.scalar(select(Sector.id).where(Sector.code == sector_code)) if sector_code else None

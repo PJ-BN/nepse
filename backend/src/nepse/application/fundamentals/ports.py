@@ -56,6 +56,7 @@ class CompanyRow:
     paid_up_capital: float | None
     listing_date: date | None
     promoter_lockin_expiry: date | None
+    nepse_id: int | None = None  # NEPSE security id, needed for market depth
 
 
 @dataclass
@@ -104,6 +105,10 @@ class OwnershipSource(Protocol):
 
 class LiveQuotes(Protocol):
     async def quote(self, symbol: str) -> dict | None: ...
+
+
+class DepthProvider(Protocol):
+    async def depth(self, symbol: str, nepse_id: int) -> dict | None: ...
 
 
 class FundamentalsRepository(Protocol):

@@ -12,7 +12,8 @@ from nepse.domain.market.entities import (
     ListedCompany,
     Quote,
 )
-from nepse.domain.market.session import MarketStatus
+from nepse.domain.market.depth import MarketDepth
+from nepse.domain.market.session import HaltState, MarketStatus
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +44,14 @@ class LiveStore(Protocol):
     async def publish(self, topic: str, data: object) -> None: ...
     async def get_last_contract(self) -> int | None: ...
     async def set_last_contract(self, contract_no: int) -> None: ...
+    async def get_halt(self) -> HaltState | None: ...
+    async def set_halt(self, halt: HaltState) -> None: ...
+    async def get_depth(self, symbol: str) -> MarketDepth | None: ...
+    async def save_depth(self, depth: MarketDepth) -> None: ...  # short TTL: depth is fetched on demand
+
+
+class DepthSource(Protocol):
+    async def market_depth(self, symbol: str, nepse_id: int) -> MarketDepth: ...
 
 
 class IngestionRepository(Protocol):

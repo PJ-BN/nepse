@@ -2,6 +2,7 @@
 
 import { useCompanyFull, useRefreshCompany } from "../hooks/useCompany";
 import { num } from "../format";
+import { DepthPanel } from "./DepthPanel";
 import { FinancialsTable } from "./FinancialsTable";
 import { LockinBadge } from "./LockinBadge";
 import { Profile } from "./Profile";
@@ -45,6 +46,7 @@ export function CompanyPage({ symbol }: { symbol: string }) {
         <ValuationCard v={data.valuation} />
         <SectorFlags flags={data.flags} metrics={data.sector_metrics} />
       </div>
+      <DepthPanel depth={data.depth} />
       <h2 className="font-semibold">Quarterly financials</h2>
       <FinancialsTable quarters={data.financials} />
       <h2 className="font-semibold">Dividend history</h2>

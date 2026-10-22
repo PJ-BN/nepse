@@ -53,7 +53,19 @@ class FakeSource:
 class FakeStore:
     def __init__(self):
         self.status, self.quotes, self.indices, self.events = None, {}, {}, []
-        self.last_contract = None
+        self.last_contract, self.halt, self.depths = None, None, {}
+
+    async def get_halt(self):
+        return self.halt
+
+    async def set_halt(self, halt):
+        self.halt = halt
+
+    async def get_depth(self, symbol):
+        return self.depths.get(symbol)
+
+    async def save_depth(self, depth):
+        self.depths[depth.symbol] = depth
 
     async def get_last_contract(self):
         return self.last_contract
