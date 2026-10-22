@@ -24,6 +24,7 @@ class MarketSummary:
     gainers: list[Quote] = field(default_factory=list)
     losers: list[Quote] = field(default_factory=list)
     top_turnover: list[Quote] = field(default_factory=list)
+    quotes: list[Quote] = field(default_factory=list)  # every symbol, by turnover (feeds the treemap)
 
 
 async def get_market_summary(live: MarketSource, eod: MarketSource, now: datetime) -> MarketSummary:
@@ -33,6 +34,7 @@ async def get_market_summary(live: MarketSource, eod: MarketSource, now: datetim
         if not quotes and not indices:
             source = "empty"
     by_code = {i.code: i for i in indices}
+    by_turnover = sorted(quotes, key=lambda q: -q.turnover)
     return MarketSummary(
         source=source,
         status=await live.status() or market_status(now),  # HALTED is only known from live data
@@ -45,5 +47,6 @@ async def get_market_summary(live: MarketSource, eod: MarketSource, now: datetim
         unchanged=sum(q.change == 0 for q in quotes),
         gainers=sorted((q for q in quotes if q.pct_change > 0), key=lambda q: -q.pct_change)[:TOP_N],
         losers=sorted((q for q in quotes if q.pct_change < 0), key=lambda q: q.pct_change)[:TOP_N],
-        top_turnover=sorted(quotes, key=lambda q: -q.turnover)[:TOP_N],
+        top_turnover=by_turnover[:TOP_N],
+        quotes=by_turnover,
     )

@@ -41,7 +41,7 @@ async def test_live_data_wins():
     assert (s.advances, s.declines, s.unchanged) == (9, 5, 1)
     assert [x.symbol for x in s.gainers][:2] == ["S14", "S13"] and len(s.gainers) == 9
     assert [x.symbol for x in s.losers] == ["S0", "S1", "S2", "S3", "S4"]
-    assert len(s.top_turnover) == 10 and s.top_turnover[0].symbol == "S14"
+    assert len(s.top_turnover) == 10 and s.top_turnover[0].symbol == "S14" and len(s.quotes) == 15
     assert s.turnover == sum(i * 10 for i in range(15))
 
 
