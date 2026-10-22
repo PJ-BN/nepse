@@ -19,11 +19,12 @@ from nepse.application.ingestion.eod import run_eod
 from nepse.application.ingestion.floorsheet_backfill import backfill_floorsheet
 from nepse.application.macro.use_cases import ingest_nrb, ingest_sebon
 from nepse.application.charting.recompute_adjustments import recompute_adjustments
+from nepse.application.charting.verify_adjusted import verify_adjusted
 from nepse.application.market.poll_live_market import poll_live_market
 from nepse.domain.calendar.npt import now_npt
 from nepse.infrastructure.cache.redis_client import redis
 from nepse.infrastructure.cache.redis_live_store import RedisLiveStore
-from nepse.infrastructure.db.repositories.charting import SqlAdjustmentRepository
+from nepse.infrastructure.db.repositories.charting import SqlAdjustmentRepository, SqlChartRepository
 from nepse.infrastructure.db.repositories.fundamentals import SqlFundamentalsRepository
 from nepse.infrastructure.db.repositories.ingestion import SqlIngestionRepository
 from nepse.infrastructure.db.repositories.macro import SqlMacroRepository
@@ -33,6 +34,7 @@ from nepse.infrastructure.scheduler.jobs import DailyJob, build_scheduler
 from nepse.infrastructure.upstream import sharesansar
 from nepse.infrastructure.upstream.merolagani import MeroLaganiClient
 from nepse.infrastructure.upstream.nepalipaisa import NepaliPaisaClient
+from nepse.infrastructure.upstream.nepsealpha import NepseAlphaClient
 from nepse.infrastructure.upstream.nrb import NrbClient
 from nepse.infrastructure.upstream.sebon import SebonClient
 from nepse.infrastructure.upstream.nepse.client import NepseClient, new_http_client
@@ -55,6 +57,17 @@ async def adjust(symbols: list[str] | None) -> int:
         for company_id in ids:
             await recompute_adjustments(SqlAdjustmentRepository(session), company_id)
     return len(ids)
+
+
+async def verify_adjusted_job(repo: SqlIngestionRepository, symbols: list[str] | None = None) -> int:
+    """Weekly: compare our adjusted closes with NepseAlpha's (last 2 years); breaches are logged per symbol."""
+    end = now_npt().date()
+    async with SessionLocal() as session:
+        reports = await verify_adjusted(SqlChartRepository(session), NepseAlphaClient(),
+                                        symbols or await repo.active_symbols(), end - timedelta(days=730), end)
+    for r in sorted(reports, key=lambda r: -r.max_pct)[:10]:
+        log.info("verify-adjusted worst: %s max=%.2f%% mean=%.3f%% breaches=%d", r.symbol, r.max_pct, r.mean_pct, len(r.breaches))
+    return sum(bool(r.breaches) for r in reports)
 
 
 async def refresh_screener() -> None:
@@ -93,6 +106,7 @@ def daily_jobs(repo: SqlIngestionRepository) -> list[DailyJob]:
         DailyJob("fundamentals_nepalipaisa", time(17, 0), paisa),  # + mutual-fund NAVs
         DailyJob("macro_nrb", time(18, 0), lambda: macro(ingest_nrb, nrb)),
         DailyJob("macro_sebon", time(19, 0), lambda: macro(ingest_sebon, sebon)),
+        DailyJob("verify_adjusted", time(20, 0), lambda: verify_adjusted_job(repo), days="thu"),  # weekly, after close
     ]
 
 
@@ -107,6 +121,9 @@ async def main(command: str | None, args: list[str]) -> None:
         return
     if command == "adjust":
         log.info("adjusted %d companies", await adjust(args or None))
+        return
+    if command == "verify-adjusted":  # [SYMBOL...] default: all active symbols
+        log.info("verify-adjusted: %d symbols with breaches", await verify_adjusted_job(SqlIngestionRepository(engine), args or None))
         return
     async with new_http_client() as http:
         source = NepseClient(http, redis, TokenSolver())
