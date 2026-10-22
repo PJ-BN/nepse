@@ -1,3 +1,4 @@
+export { AccumulationScanner } from "./components/AccumulationScanner";
 export { BrokerSankey } from "./components/BrokerSankey";
 export { CostBasisMatrix } from "./components/CostBasisMatrix";
 export { FloorsheetDashboard } from "./components/FloorsheetDashboard";

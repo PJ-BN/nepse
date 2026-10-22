@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter
+from sqlalchemy import text
 
 from nepse.application.market.get_market_summary import MarketSummary, get_market_summary
 from nepse.domain.calendar.npt import NPT
@@ -15,4 +16,6 @@ router = APIRouter(prefix="/api/v1/market", tags=["market"])
 @router.get("/summary")
 async def summary() -> MarketSummary:
     async with SessionLocal() as s:
-        return await get_market_summary(RedisLiveMarketSource(redis), SqlEodMarketSource(s), datetime.now(NPT))
+        rows = await s.execute(text("SELECT symbol, listed_shares FROM companies WHERE listed_shares > 0"))
+        shares = {r.symbol: r.listed_shares for r in rows}
+        return await get_market_summary(RedisLiveMarketSource(redis), SqlEodMarketSource(s), datetime.now(NPT), shares)
