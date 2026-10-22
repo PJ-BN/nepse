@@ -1,0 +1,52 @@
+[project]
+name = "nepse"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.32",
+  "sqlalchemy[asyncio]>=2.0.36,<2.1",
+  "asyncpg>=0.30",
+  "alembic>=1.14",
+  "redis>=5.2",
+  "pydantic-settings>=2.6",
+  "apscheduler>=3.10,<4",
+  "tzdata>=2024.2",
+  "httpx>=0.28",
+  "wasmtime>=26",
+  "beautifulsoup4>=4.12",
+  "lxml>=5.3",
+  "selectolax>=0.3.21",
+  "curl_cffi>=0.7",
+  "openpyxl>=3.1",
+  "pdfplumber>=0.11",
+  "pyjwt>=2.9",
+  "argon2-cffi>=23.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "import-linter>=2.1"]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.importlinter]
+root_package = "nepse"
+
+[[tool.importlinter.contracts]]
+name = "Clean architecture layers (presentation/workers are the composition edge)"
+type = "layers"
+layers = [
+  "nepse.presentation | nepse.workers",
+  "nepse.infrastructure",
+  "nepse.application",
+  "nepse.domain",
+]
