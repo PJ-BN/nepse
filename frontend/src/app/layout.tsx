@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { WhaleToasts } from "@/features/live-feed";
 import { Nav } from "@/shared/ui/Nav";
 import { QueryProvider } from "@/shared/ui/QueryProvider";
 
@@ -32,6 +33,7 @@ export default function RootLayout({
         <QueryProvider>
           <Nav />
           {children}
+          <WhaleToasts />
         </QueryProvider>
       </body>
     </html>
