@@ -1,5 +1,6 @@
 """Dashboard summary: indices, breadth, turnover and top movers; live when Redis has data, else EOD."""
-from dataclasses import dataclass, field
+from collections.abc import Mapping
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 
 from nepse.application.market.ports import IndexValue, MarketSource, Quote
@@ -27,12 +28,16 @@ class MarketSummary:
     quotes: list[Quote] = field(default_factory=list)  # every symbol, by turnover (feeds the treemap)
 
 
-async def get_market_summary(live: MarketSource, eod: MarketSource, now: datetime) -> MarketSummary:
+async def get_market_summary(
+    live: MarketSource, eod: MarketSource, now: datetime, listed_shares: Mapping[str, int] | None = None
+) -> MarketSummary:
     quotes, indices, source, src = await live.quotes(), await live.indices(), "live", live
     if not quotes and not indices:
         quotes, indices, source, src = await eod.quotes(), await eod.indices(), "eod", eod
         if not quotes and not indices:
             source = "empty"
+    shares = listed_shares or {}
+    quotes = [replace(q, market_cap=round(q.ltp * shares[q.symbol], 2)) if shares.get(q.symbol) else q for q in quotes]
     by_code = {i.code: i for i in indices}
     by_turnover = sorted(quotes, key=lambda q: -q.turnover)
     return MarketSummary(

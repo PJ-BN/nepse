@@ -45,6 +45,12 @@ async def test_live_data_wins():
     assert s.turnover == sum(i * 10 for i in range(15))
 
 
+async def test_market_cap_from_listed_shares():
+    s = await get_market_summary(FakeSource([q("A", 0), q("B", 0)]), FakeSource(), SUNDAY_NOON, {"A": 1000})
+    caps = {x.symbol: x.market_cap for x in s.quotes}
+    assert caps == {"A": 100_000.0, "B": None}
+
+
 async def test_falls_back_to_eod_and_clock_status():
     s = await get_market_summary(FakeSource(), FakeSource([q("EOD", 1)], INDICES), SUNDAY_NOON)
     assert s.source == "eod" and s.status is MarketStatus.OPEN and s.gainers[0].symbol == "EOD"

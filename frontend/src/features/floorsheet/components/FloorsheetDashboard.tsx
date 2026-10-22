@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useAccumulation, useBrokerAnalytics } from "../hooks/useFloorsheet";
+import { useWhaleTrades } from "@/features/live-feed";
+import { useBrokerAnalytics } from "../hooks/useFloorsheet";
 import { WINDOWS } from "../types";
+import { AccumulationScanner } from "./AccumulationScanner";
 import { BrokerSankey } from "./BrokerSankey";
 import { CostBasisMatrix } from "./CostBasisMatrix";
 import { WhaleTape } from "./WhaleTape";
@@ -14,7 +16,7 @@ export function FloorsheetDashboard({ initialSymbol = "" }: { initialSymbol?: st
   const [symbol, setSymbol] = useState(initialSymbol);
   const [days, setDays] = useState<number>(30);
   const { data, error, isFetching } = useBrokerAnalytics(symbol, days);
-  const accumulation = useAccumulation();
+  const liveWhales = useWhaleTrades();
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_24rem]">
@@ -80,24 +82,11 @@ export function FloorsheetDashboard({ initialSymbol = "" }: { initialSymbol?: st
       <aside className="space-y-6">
         <div>
           <h2 className="mb-2 text-lg font-semibold">Whale trades</h2>
-          <WhaleTape symbol={symbol || undefined} />
+          <WhaleTape symbol={symbol || undefined} live={liveWhales} />
         </div>
         <div>
-          <h2 className="mb-2 text-lg font-semibold">Accumulation scanner (10D)</h2>
-          {accumulation.data?.length ? (
-            <ul className="text-sm">
-              {accumulation.data.map((h) => (
-                <li key={h.symbol}>
-                  <button className="underline" onClick={() => { setDraft(h.symbol); setSymbol(h.symbol); }}>
-                    {h.symbol}
-                  </button>{" "}
-                  top-5 {pct(h.top5_share)}, ATR {pct(h.atr_pct)}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-gray-500">No scrips match right now.</p>
-          )}
+          <h2 className="mb-2 text-lg font-semibold">Smart money accumulation</h2>
+          <AccumulationScanner onSelect={(s) => { setDraft(s); setSymbol(s); }} />
         </div>
       </aside>
     </div>

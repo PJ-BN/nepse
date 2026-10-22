@@ -13,6 +13,7 @@ class Quote:
     pct_change: float
     volume: int
     turnover: float
+    market_cap: float | None = None  # ltp x listed shares; filled by get_market_summary
 
 
 @dataclass(frozen=True)
