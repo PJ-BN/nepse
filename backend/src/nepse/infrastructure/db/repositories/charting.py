@@ -1,9 +1,9 @@
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from nepse.application.charting.ports import Bar, SymbolInfo
+from nepse.application.charting.ports import Bar, IntradayBar, SymbolInfo
 from nepse.domain.corporate_actions.adjustment import CorporateAction
 
 _SYMBOL = "SELECT c.symbol, c.name, s.code AS sector FROM companies c LEFT JOIN sectors s ON s.id = c.sector_id"
@@ -24,6 +24,21 @@ class SqlChartRepository:
         return [
             Bar(r.trade_date, float(r.open), float(r.high), float(r.low), float(r.close), int(r.volume or 0),
                 float(r.adj_factor))
+            for r in rows
+        ]
+
+    async def intraday_bars(self, symbol: str, start: datetime, end: datetime, minutes: int) -> list[IntradayBar]:
+        # Buckets anchor at NPT midnight (+05:45) so 60-minute bars line up with the 11:00 open.
+        rows = await self.s.execute(text("""
+            SELECT time_bucket(make_interval(mins => :minutes), t.trade_time,
+                               origin => '2000-01-03 00:00:00+05:45'::timestamptz) AS ts,
+                   first(t.rate, t.contract_no) AS open, max(t.rate) AS high, min(t.rate) AS low,
+                   last(t.rate, t.contract_no) AS close, sum(t.qty) AS volume
+            FROM floorsheet_ticks t JOIN companies c ON c.id = t.company_id
+            WHERE c.symbol = :symbol AND t.trade_time >= :start AND t.trade_time < :end
+            GROUP BY 1 ORDER BY 1"""), {"symbol": symbol, "start": start, "end": end, "minutes": minutes})
+        return [
+            IntradayBar(r.ts, float(r.open), float(r.high), float(r.low), float(r.close), int(r.volume))
             for r in rows
         ]
 

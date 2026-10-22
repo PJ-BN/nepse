@@ -21,3 +21,19 @@ async def get_history(repo: ChartRepository, symbol: str, start: date, end: date
             out[key].append(round(price * f, 2))
         out["v"].append(round(b.volume / f))
     return out
+
+
+INTRADAY = {"1": 1, "5": 5, "15": 15, "60": 60}  # TradingView resolution -> minutes per bar
+
+
+async def get_intraday_history(repo: ChartRepository, symbol: str, start: datetime, end: datetime, resolution: str) -> dict:
+    """UDF /history for intraday bars built from floorsheet ticks. Prices are raw: ticks carry no adj_factor."""
+    bars = await repo.intraday_bars(symbol, start, end, INTRADAY[resolution])
+    if not bars:
+        return {"s": "no_data"}
+    return {
+        "s": "ok",
+        "t": [int(b.ts.timestamp()) for b in bars],
+        "o": [b.open for b in bars], "h": [b.high for b in bars],
+        "l": [b.low for b in bars], "c": [b.close for b in bars], "v": [b.volume for b in bars],
+    }

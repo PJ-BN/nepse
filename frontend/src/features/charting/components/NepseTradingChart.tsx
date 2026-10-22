@@ -7,12 +7,13 @@ import {
   HistogramSeries,
   LineSeries,
   type IChartApi,
+  type IPriceLine,
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
 import { useEffect, useRef } from "react";
 import { rsi, sma } from "../indicators";
-import type { Candle } from "../types";
+import type { Candle, PriceOverlay } from "../types";
 
 const UP = "#16a34a";
 const DOWN = "#dc2626";
@@ -29,8 +30,18 @@ function line(times: UTCTimestamp[], values: (number | null)[]) {
   return values.flatMap((value, i) => (value === null ? [] : [{ time: times[i], value }]));
 }
 
-/** Daily candles with volume, SMA 20/50 overlays and an RSI 14 pane (lightweight-charts v5). */
-export function NepseTradingChart({ candles, height = 560 }: { candles: Candle[]; height?: number }) {
+/** Candles (daily or intraday) with volume, SMA 20/50 overlays and an RSI 14 pane (lightweight-charts v5). */
+export function NepseTradingChart({
+  candles,
+  overlay = [],
+  intraday = false,
+  height = 560,
+}: {
+  candles: Candle[];
+  overlay?: PriceOverlay[];
+  intraday?: boolean;
+  height?: number;
+}) {
   const el = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const series = useRef<Series | null>(null);
@@ -76,6 +87,25 @@ export function NepseTradingChart({ candles, height = 560 }: { candles: Candle[]
     s.rsi.setData(line(times, rsi(closes, 14)));
     chart.current?.timeScale().fitContent();
   }, [candles]);
+
+  useEffect(() => {
+    chart.current?.applyOptions({ timeScale: { timeVisible: intraday } });
+  }, [intraday]);
+
+  useEffect(() => {
+    const s = series.current;
+    if (!s) return;
+    const lines: IPriceLine[] = overlay.map((o) =>
+      s.candles.createPriceLine({ price: o.price, color: o.color, lineStyle: 2, lineWidth: 1, axisLabelVisible: true, title: o.title }),
+    );
+    return () => {
+      try {
+        lines.forEach((l) => s.candles.removePriceLine(l));
+      } catch {
+        // chart already disposed by the mount effect cleanup
+      }
+    };
+  }, [overlay]);
 
   return <div ref={el} style={{ height }} className="w-full" />;
 }
