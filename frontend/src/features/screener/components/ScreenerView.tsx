@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { downloadCsv } from "../api";
+import { downloadCsv, downloadXlsx } from "../api";
 import { useScreenerRun } from "../hooks/useScreener";
 import { type Combinator, filterToPills, newPill, type Pill, pillsToFilter } from "../pills";
 import type { Preset, ScreenerRequest } from "../types";
@@ -58,6 +58,16 @@ export function ScreenerView() {
           }}
         >
           Download CSV
+        </button>
+        <button
+          type="button"
+          className="rounded border px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+          onClick={() => {
+            setCsvError(null);
+            downloadXlsx(req).catch((e: Error) => setCsvError(e.message));
+          }}
+        >
+          Download Excel
         </button>
         {csvError && <span className="text-red-600">{csvError}</span>}
       </div>

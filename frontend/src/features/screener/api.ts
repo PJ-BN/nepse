@@ -13,13 +13,16 @@ export const runScreener = (req: ScreenerRequest) => getJson<ScreenerResult>(`${
 
 export const fetchPresets = () => getJson<Preset[]>(`${BASE}/presets`);
 
-export async function downloadCsv(req: ScreenerRequest) {
-  const res = await fetch(`${API_URL}${BASE}/run`, post({ ...req, limit: 1000, format: "csv" }));
+async function download(req: ScreenerRequest, format: "csv" | "xlsx") {
+  const res = await fetch(`${API_URL}${BASE}/run`, post({ ...req, limit: 1000, format }));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   const url = URL.createObjectURL(await res.blob());
   const a = document.createElement("a");
   a.href = url;
-  a.download = "screener.csv";
+  a.download = `screener.${format}`;
   a.click();
   URL.revokeObjectURL(url);
 }
+
+export const downloadCsv = (req: ScreenerRequest) => download(req, "csv");
+export const downloadXlsx = (req: ScreenerRequest) => download(req, "xlsx");

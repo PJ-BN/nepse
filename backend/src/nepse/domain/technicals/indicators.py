@@ -81,3 +81,18 @@ def atr_pct(highs: Sequence[float], lows: Sequence[float], closes: Sequence[floa
             wilder: bool = True) -> Series:
     """ATR as a percentage of the close, comparable across price levels."""
     return [None if a is None or not c else 100 * a / c for a, c in zip(atr(highs, lows, closes, n, wilder), closes)]
+
+
+def rsi_bullish_divergence(closes: Sequence[float], n: int = 14, window: int = 15) -> bool:
+    """Price makes a lower low while RSI makes a higher low: the lowest close of the last `window` bars
+    against the lowest close of the `window` bars before it, compared by RSI at those two bars.
+    Uses Cutler's RSI so it matches mv_screener_snapshot.rsi_bull_div; ties pick the most recent bar."""
+    r = rsi(closes, n, wilder=False)
+    if len(closes) < 2 * window or any(v is None for v in r[-2 * window:]):
+        return False
+
+    def low(lo: int, hi: int) -> int:
+        return min(range(lo, hi), key=lambda i: (closes[i], -i))
+
+    recent, prior = low(len(closes) - window, len(closes)), low(len(closes) - 2 * window, len(closes) - window)
+    return closes[recent] < closes[prior] and r[recent] > r[prior]  # type: ignore[operator]

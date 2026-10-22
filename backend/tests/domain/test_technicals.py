@@ -3,7 +3,7 @@ from datetime import date, timedelta
 import pytest
 
 from nepse.domain.technicals.breadth import advance_decline, mcclellan_oscillator, pct_above_sma
-from nepse.domain.technicals.indicators import atr, atr_pct, ema, rsi, sma, true_range
+from nepse.domain.technicals.indicators import atr, atr_pct, ema, rsi, rsi_bullish_divergence, sma, true_range
 from nepse.domain.technicals.rrg import Quadrant, compute_rrg, quadrant, rs_lines, to_weekly
 
 
@@ -92,3 +92,13 @@ def test_rrg_weekly_resample_and_short_history():
     # days[0] is Monday; weeks run Sunday-Saturday, so Saturday days[5] and days[12] close weeks
     assert weekly == [(days[5], 5.0), (days[12], 12.0), (days[13], 13.0)]
     assert compute_rrg({"X": [(d, 1.0) for d in days]}, [(d, 1.0) for d in days], weekly=True) == []
+
+
+def test_rsi_bullish_divergence():
+    flat = [100 + (i % 2) for i in range(15)]
+    crash = [100, 96, 92, 88, 84, 80, 76, 72, 70, 74, 78, 82, 86, 90, 88]  # low 70 on a deeply oversold RSI
+    slide = [86, 83, 80, 78, 76, 74, 75, 76, 77, 76, 75, 74, 72, 71, 69.5]  # lower low 69.5, milder RSI
+    assert rsi_bullish_divergence(flat + crash + slide) is True
+    assert rsi_bullish_divergence([200.0 - i for i in range(45)]) is False  # lower lows, RSI pinned at 0
+    assert rsi_bullish_divergence(flat + crash + [90, 92, 94, 96, 98, 96, 94, 92, 90, 92, 94, 96, 98, 100, 99]) is False
+    assert rsi_bullish_divergence([1.0] * 10) is False  # not enough history

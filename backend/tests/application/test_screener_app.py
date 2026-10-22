@@ -3,7 +3,7 @@ import pytest
 from nepse.application.screener.filter_ast import (
     FIELDS, OUTPUT_COLUMNS, Condition, FieldRef, FilterError, Group, SortKey, parse_filter, parse_limit, parse_sort,
 )
-from nepse.application.screener.run_screener import PRESETS, run_preset, run_screener, to_csv
+from nepse.application.screener.run_screener import PRESETS, run_preset, run_screener, to_csv, to_xlsx
 
 
 def test_parse_nested_tree():
@@ -125,3 +125,12 @@ def test_csv_export():
     header, row = out.splitlines()
     assert header.split(",") == list(OUTPUT_COLUMNS)
     assert row.startswith("NABIL,BANKING,,512.5")
+
+
+def test_xlsx_export():
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+    ws = load_workbook(BytesIO(to_xlsx([{"symbol": "NABIL", "close": 512.5, "junk": 1}]))).active
+    assert [c.value for c in ws[1]] == list(OUTPUT_COLUMNS)
+    assert ws[2][0].value == "NABIL" and ws[2][list(OUTPUT_COLUMNS).index("close")].value == 512.5

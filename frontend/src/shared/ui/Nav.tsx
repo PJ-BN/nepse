@@ -5,6 +5,7 @@ const LINKS = [
   ["/chart", "Chart"],
   ["/floorsheet", "Floorsheet"],
   ["/screener", "Screener"],
+  ["/mutual-funds", "Mutual funds"],
   ["/macro", "Macro"],
   ["/portfolio", "Portfolio"],
 ] as const;

@@ -9,7 +9,7 @@ class ScreenerRunRequest(BaseModel):
     sort: list[str] | str | None = None
     limit: int = Field(100, ge=1, le=1000)
     preset: str | None = None  # use a preset's filter/sort instead of `filter`/`sort`
-    format: Literal["json", "csv"] = "json"
+    format: Literal["json", "csv", "xlsx"] = "json"
 
 
 class ScreenerRunResponse(BaseModel):
