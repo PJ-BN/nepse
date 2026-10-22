@@ -126,6 +126,8 @@ async def test_get_company_full_assembles_page():
     assert val["market_cap"] == pytest.approx(550 * 284_098_483, rel=1e-6)
     assert val["graham_number"] == pytest.approx(382.1, abs=0.5)
     assert val["dcf"]["per_share"] > 0 and val["price_to_life_fund"] is None
+    hi = await get_company_full("nabil", repo, TODAY, Live(), dcf_growth=0.10, terminal_growth=0.04)
+    assert hi["valuation"]["dcf"]["per_share"] > val["dcf"]["per_share"] and hi["valuation"]["dcf"]["growth"] == 0.10
     assert [f["code"] for f in full["flags"]] == ["BFI_STRESS"]
     assert full["lockin"]["days_left"] == 40
     assert full["profile"]["promoter_pct"] == pytest.approx(55.66, abs=0.01)

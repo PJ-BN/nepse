@@ -1,7 +1,8 @@
+import { DcfWidget } from "./DcfWidget";
 import type { Valuation } from "../types";
 import { crore, num } from "../format";
 
-export function ValuationCard({ v }: { v: Valuation }) {
+export function ValuationCard({ v, symbol }: { v: Valuation; symbol: string }) {
   const rows: [string, string][] = [
     ["EPS / BVPS", `${num(v.eps)} / ${num(v.bvps)}`],
     ["P/E · P/B", `${num(v.pe)} · ${num(v.pb)}`],
@@ -11,7 +12,7 @@ export function ValuationCard({ v }: { v: Valuation }) {
     ["Enterprise value", crore(v.enterprise_value)],
     ["EV / EBITDA", num(v.ev_ebitda)],
   ];
-  if (v.dcf) rows.push([`DCF ${v.dcf.years}y (rf ${num(v.dcf.risk_free_rate * 100, 2)}%)`, `Rs. ${num(v.dcf.per_share)}`]);
+
   if (v.price_to_life_fund != null) rows.push(["Price / adj. life fund", num(v.price_to_life_fund)]);
   if (v.nav != null) rows.push(["NAV · discount", `${num(v.nav, 4)} · ${num(v.nav_discount_pct, 1)}%`]);
 
@@ -26,6 +27,7 @@ export function ValuationCard({ v }: { v: Valuation }) {
           </div>
         ))}
       </dl>
+      {v.dcf && <DcfWidget symbol={symbol} initial={v.dcf} />}
     </section>
   );
 }

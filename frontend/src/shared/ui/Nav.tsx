@@ -4,6 +4,8 @@ const LINKS = [
   ["/", "Dashboard"],
   ["/chart", "Chart"],
   ["/floorsheet", "Floorsheet"],
+  ["/company", "Companies"],
+  ["/broker", "Brokers"],
   ["/screener", "Screener"],
   ["/macro", "Macro"],
   ["/portfolio", "Portfolio"],
