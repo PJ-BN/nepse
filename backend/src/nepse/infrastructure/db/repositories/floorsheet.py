@@ -12,7 +12,8 @@ from nepse.domain.floorsheet.metrics import WHALE_AMOUNT, WHALE_QTY, BrokerDay, 
 
 # Every trade has a buyer, so the buy aggregate alone holds every trading day.
 WINDOW_START = text("""
-    SELECT min(day) FROM (SELECT DISTINCT day FROM broker_buy_daily ORDER BY day DESC LIMIT :days) d
+    SELECT CASE WHEN NOT :full OR count(*) >= :days THEN min(day) END
+    FROM (SELECT DISTINCT day FROM broker_buy_daily ORDER BY day DESC LIMIT :days) d
 """)
 
 BROKER_ROWS = """
@@ -52,8 +53,8 @@ class SqlFloorsheetRepository:
         )).first()
         return Company(*row) if row else None
 
-    async def window_start(self, days: int) -> datetime | None:
-        return await self.s.scalar(WINDOW_START, {"days": days})
+    async def window_start(self, days: int, *, full: bool = False) -> datetime | None:
+        return await self.s.scalar(WINDOW_START, {"days": days, "full": full})
 
     async def broker_rows(
         self, start: datetime, *, symbol: str | None = None, broker: int | None = None

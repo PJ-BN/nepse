@@ -139,7 +139,8 @@ class AccumulationHit:
 
 async def scan_accumulation(repo: FloorsheetRepository) -> list[AccumulationHit]:
     """Scrips whose top-5 net buyers hold > 35% of volume over the last 10 trading days with ATR% < 4%."""
-    start = await repo.window_start(m.ACCUM_DAYS)
+    # The rule needs 10 *complete* sessions; a partial window would flag every thinly traded scrip.
+    start = await repo.window_start(m.ACCUM_DAYS, full=True)
     if start is None:
         return []
     by_symbol: dict[str, list] = defaultdict(list)

@@ -23,8 +23,10 @@ class BrokerStockRow:
 class FloorsheetRepository(Protocol):
     async def company(self, symbol: str) -> Company | None: ...
 
-    async def window_start(self, days: int) -> datetime | None:
-        """First day of the last `days` trading days, or None when there is no data."""
+    async def window_start(self, days: int, *, full: bool = False) -> datetime | None:
+        """First day of the last `days` trading days, or None when there is no data.
+
+        With full=True, also None unless at least `days` trading days exist."""
 
     async def broker_rows(
         self, start: datetime, *, symbol: str | None = None, broker: int | None = None

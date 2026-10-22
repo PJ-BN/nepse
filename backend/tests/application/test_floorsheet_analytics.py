@@ -23,14 +23,15 @@ T = datetime(2025, 4, 20, 11, 5, tzinfo=NPT)
 
 
 class FakeRepo:
-    def __init__(self, rows, bars=None, public_shares=1_000_000, has_data=True):
+    def __init__(self, rows, bars=None, public_shares=1_000_000, has_data=True, sessions=10):
         self.rows, self.bars, self.public_shares, self.has_data = rows, bars or {}, public_shares, has_data
+        self.sessions = sessions
 
     async def company(self, symbol):
         return Company(1, symbol, self.public_shares) if symbol in {r.symbol for r in self.rows} | {"EMPTY"} else None
 
-    async def window_start(self, days):
-        return DAY if self.has_data else None
+    async def window_start(self, days, *, full=False):
+        return DAY if self.has_data and (not full or self.sessions >= days) else None
 
     async def broker_rows(self, start, *, symbol=None, broker=None):
         return [r for r in self.rows if symbol in (None, r.symbol) and broker in (None, r.row.broker)]
@@ -106,6 +107,8 @@ async def test_scan_accumulation():
     assert [(h.symbol, h.top5_share, h.top_brokers) for h in hits] == [("ABC", 0.5, [1, 2, 3, 4, 5])]
     # Same flows but volatile price -> no hit
     assert await scan_accumulation(FakeRepo(rows, {"ABC": [(110, 90, 100)] * 10})) == []
+    # Same calm flows but only 1 session of floorsheet history -> no verdict yet
+    assert await scan_accumulation(FakeRepo(rows, {"ABC": calm, "XYZ": calm}, sessions=1)) == []
 
 
 async def test_whales():
