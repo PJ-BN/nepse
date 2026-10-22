@@ -9,6 +9,8 @@ const LINKS = [
   ["/screener", "Screener"],
   ["/mutual-funds", "Mutual funds"],
   ["/macro", "Macro"],
+  ["/dividends", "Dividends"],
+  ["/ipo", "IPO"],
   ["/portfolio", "Portfolio"],
 ] as const;
 

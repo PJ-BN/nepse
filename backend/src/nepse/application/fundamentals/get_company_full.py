@@ -18,12 +18,8 @@ def _r(x: float | None, nd: int = 2) -> float | None:
 
 async def get_company_full(symbol: str, repo: FundamentalsRepository, today: date, quotes: LiveQuotes | None = None,
                            risk_free_rate: float = DEFAULT_RISK_FREE_RATE,
-<<<<<<< HEAD
-                           dcf_growth: float = DEFAULT_DCF_GROWTH, depth: DepthProvider | None = None) -> dict | None:
-=======
-                           dcf_growth: float = DEFAULT_DCF_GROWTH,
-                           terminal_growth: float = DEFAULT_TERMINAL_GROWTH) -> dict | None:
->>>>>>> refs/heads/claude/sharp-dubinsky-b79155
+                           dcf_growth: float = DEFAULT_DCF_GROWTH, terminal_growth: float = DEFAULT_TERMINAL_GROWTH,
+                           depth: DepthProvider | None = None) -> dict | None:
     symbol = symbol.upper()
     company = await repo.company(symbol)
     if company is None:

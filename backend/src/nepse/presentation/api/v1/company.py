@@ -62,11 +62,7 @@ async def company_full(symbol: str, risk_free_rate: float = Query(DEFAULT_RISK_F
                        terminal_growth: float = Query(DEFAULT_TERMINAL_GROWTH, ge=0, le=0.1),
                        repo: SqlFundamentalsRepository = Depends(_repo)) -> dict:
     data = await get_company_full(symbol, repo, now_npt().date(), RedisQuotes(), risk_free_rate=risk_free_rate,
-<<<<<<< HEAD
-                                  depth=LiveDepth())
-=======
-                                  dcf_growth=dcf_growth, terminal_growth=terminal_growth)
->>>>>>> refs/heads/claude/sharp-dubinsky-b79155
+                                  dcf_growth=dcf_growth, terminal_growth=terminal_growth, depth=LiveDepth())
     if data is None:
         raise HTTPException(404, f"unknown symbol {symbol.upper()}")
     return data
