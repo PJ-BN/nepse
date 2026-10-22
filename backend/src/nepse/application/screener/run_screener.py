@@ -10,13 +10,14 @@ LOW_CAP_NPR = 5_000_000_000  # NPR 5 billion market cap
 PRESETS: dict[str, dict] = {
     "undervalued-banks": {
         "name": "Undervalued Banks",
-        # ponytail: stub until feat/fundamentals merges; then add pe/pbv/graham-number conditions here.
-        "description": "Commercial banks trading below their 200-day average (P/E and P/B filters arrive with fundamentals).",
+        "description": "Commercial banks under 1.5x book, priced below their Graham number, NPL under the 4.5% flag.",
         "filter": {"and": [
             {"field": "sector", "op": "=", "value": "BANKING"},
-            {"field": "close", "op": "<", "value": {"field": "sma_200"}},
+            {"field": "pbv", "op": "<", "value": 1.5},
+            {"field": "close", "op": "<", "value": {"field": "graham_number"}},
+            {"field": "npl_pct", "op": "<", "value": 4.5},
         ]},
-        "sort": ["change_pct"],
+        "sort": ["pbv"],
     },
     "broker-cornered-low-cap-hydro": {
         "name": "Broker-Cornered Low-Cap Hydro",

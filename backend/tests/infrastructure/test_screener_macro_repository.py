@@ -253,3 +253,25 @@ async def test_api_endpoints(session):
         assert (await c.get("/api/v1/macro/rrg?timeframe=weekly")).json()["timeframe"] == "weekly"
         assert (await c.get("/api/v1/macro/rrg?timeframe=hourly")).status_code == 422
         assert (await c.get("/api/v1/macro/ipo-pipeline")).json() == []
+
+
+async def test_fundamentals_columns_from_latest_quarter(session):
+    # Two quarters for AAA: only the latest (by period_end) may feed the snapshot.
+    await session.execute(sa.text(
+        "INSERT INTO quarterly_financials (company_id, fy_bs, quarter, period_end, eps, bvps, sector_metrics) VALUES "
+        "(1, '2081/82', 4, '2025-07-16', 99, 999, '{\"npl_pct\": 9}'),"
+        "(1, '2082/83', 1, '2025-10-17', 10, 100, '{\"npl_pct\": 2.5, \"car_pct\": \"n/a\"}')"))
+    await session.commit()
+    repo = SqlScreenerRepository(session)
+    await repo.refresh()
+    rows = {r["symbol"]: r for r in await repo.query(None, parse_sort(None), 100)}
+    a, close = rows["AAA"], rows["AAA"]["close"]
+    assert (a["eps"], a["bvps"]) == (10, 100)
+    assert a["pe"] == pytest.approx(close / 10) and a["pbv"] == pytest.approx(close / 100)
+    assert a["graham_number"] == pytest.approx(150.0)  # sqrt(22.5 * 10 * 100)
+    assert a["npl_pct"] == 2.5 and a["car_pct"] is None  # non-numeric JSONB value is ignored, not an error
+    assert rows["HHH"]["pe"] is None  # no financials
+
+    hits = await run_screener(repo, {"and": [{"field": "pbv", "op": "<", "value": 5},
+                                             {"field": "npl_pct", "op": "<", "value": 4.5}]})
+    assert [r["symbol"] for r in hits] == ["AAA"]

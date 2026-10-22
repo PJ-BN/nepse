@@ -17,6 +17,14 @@ export const FIELDS = {
   high_52w: { label: "52w high", kind: "num" },
   low_52w: { label: "52w low", kind: "num" },
   top3_broker_accum_15d_pct: { label: "Top-3 broker accum 15d %", kind: "num" },
+  eps: { label: "EPS", kind: "num" },
+  bvps: { label: "Book value / share", kind: "num" },
+  pe: { label: "P/E", kind: "num" },
+  pbv: { label: "P/B", kind: "num" },
+  graham_number: { label: "Graham number", kind: "num" },
+  npl_pct: { label: "NPL %", kind: "num" },
+  car_pct: { label: "CAR %", kind: "num" },
+  cost_per_mw: { label: "Cost per MW (NPR)", kind: "num" },
 } as const;
 
 export type FieldName = keyof typeof FIELDS;

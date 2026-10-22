@@ -15,7 +15,7 @@ from typing import Literal
 
 NUM, STR = "num", "str"
 
-# Filterable/sortable columns of mv_screener_snapshot. Fundamentals add their columns here at merge time.
+# Filterable/sortable columns of mv_screener_snapshot (fundamentals columns from migration 0004).
 FIELDS: dict[str, str] = {
     "symbol": STR,
     "sector": STR,
@@ -32,6 +32,14 @@ FIELDS: dict[str, str] = {
     "high_52w": NUM,
     "low_52w": NUM,
     "top3_broker_accum_15d_pct": NUM,
+    "eps": NUM,
+    "bvps": NUM,
+    "pe": NUM,
+    "pbv": NUM,
+    "graham_number": NUM,
+    "npl_pct": NUM,
+    "car_pct": NUM,
+    "cost_per_mw": NUM,
 }
 # Every column returned to clients (trade_date is informational, not filterable).
 OUTPUT_COLUMNS: tuple[str, ...] = ("symbol", "sector", "trade_date", *[f for f in FIELDS if FIELDS[f] == NUM])
