@@ -3,27 +3,38 @@
 Run once by hand: `python -m nepse.workers.main eod` (or `poll`), or
 `python -m nepse.workers.main backfill [SYMBOL ...]` for 10 years of ShareSansar history (resumable).
 `python -m nepse.workers.main adjust [SYMBOL ...]` recomputes adj_factor from corporate actions (all by default).
+`python -m nepse.workers.main floorsheet-backfill [DAYS]` loads the last DAYS (90) days of floorsheet (resumable).
 """
 import asyncio
 import logging
 import sys
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 
 from sqlalchemy import text
 
+from nepse.application.fundamentals.ingest_all import ingest_all, ingest_navs
 from nepse.application.ingestion.backfill import backfill
+from nepse.application.ingestion.crosscheck import crosscheck_eod
 from nepse.application.ingestion.eod import run_eod
+from nepse.application.ingestion.floorsheet_backfill import backfill_floorsheet
+from nepse.application.macro.use_cases import ingest_nrb, ingest_sebon
 from nepse.application.charting.recompute_adjustments import recompute_adjustments
 from nepse.application.market.poll_live_market import poll_live_market
 from nepse.domain.calendar.npt import now_npt
 from nepse.infrastructure.cache.redis_client import redis
 from nepse.infrastructure.cache.redis_live_store import RedisLiveStore
 from nepse.infrastructure.db.repositories.charting import SqlAdjustmentRepository
+from nepse.infrastructure.db.repositories.fundamentals import SqlFundamentalsRepository
 from nepse.infrastructure.db.repositories.ingestion import SqlIngestionRepository
+from nepse.infrastructure.db.repositories.macro import SqlMacroRepository
 from nepse.infrastructure.db.repositories.screener import SqlScreenerRepository
 from nepse.infrastructure.db.session import SessionLocal, engine
-from nepse.infrastructure.scheduler.jobs import build_scheduler
+from nepse.infrastructure.scheduler.jobs import DailyJob, build_scheduler
 from nepse.infrastructure.upstream import sharesansar
+from nepse.infrastructure.upstream.merolagani import MeroLaganiClient
+from nepse.infrastructure.upstream.nepalipaisa import NepaliPaisaClient
+from nepse.infrastructure.upstream.nrb import NrbClient
+from nepse.infrastructure.upstream.sebon import SebonClient
 from nepse.infrastructure.upstream.nepse.client import NepseClient, new_http_client
 from nepse.infrastructure.upstream.nepse.wasm_token import TokenSolver
 
@@ -51,6 +62,40 @@ async def refresh_screener() -> None:
         await SqlScreenerRepository(session).refresh()
 
 
+def daily_jobs(repo: SqlIngestionRepository) -> list[DailyJob]:
+    """Post-close jobs (NPT). Clients are built here and passed in; add a DailyJob to schedule another."""
+    sharesansar_http, nrb, sebon = sharesansar.new_http_client(), NrbClient(), SebonClient()
+    merolagani, nepalipaisa = MeroLaganiClient(), NepaliPaisaClient()
+
+    async def crosscheck():
+        return await crosscheck_eod(sharesansar.ShareSansarClient(sharesansar_http), repo)
+
+    async def fundamentals(source):
+        symbols = await repo.active_symbols()
+        async with SessionLocal() as session:
+            return len(await ingest_all(symbols, SqlFundamentalsRepository(session), [source],
+                                        source if source is nepalipaisa else None))
+
+    async def navs():
+        async with SessionLocal() as session:
+            return await ingest_navs(nepalipaisa, SqlFundamentalsRepository(session))
+
+    async def paisa():
+        return await fundamentals(nepalipaisa), await navs()
+
+    async def macro(use_case, source):
+        async with SessionLocal() as session:
+            return await use_case(source, SqlMacroRepository(session))
+
+    return [
+        DailyJob("eod_crosscheck", time(15, 30), crosscheck),
+        DailyJob("fundamentals_merolagani", time(16, 0), lambda: fundamentals(merolagani)),
+        DailyJob("fundamentals_nepalipaisa", time(17, 0), paisa),  # + mutual-fund NAVs
+        DailyJob("macro_nrb", time(18, 0), lambda: macro(ingest_nrb, nrb)),
+        DailyJob("macro_sebon", time(19, 0), lambda: macro(ingest_sebon, sebon)),
+    ]
+
+
 async def main(command: str | None, args: list[str]) -> None:
     if command == "backfill":
         since = date.today() - timedelta(days=365 * 10)
@@ -73,7 +118,12 @@ async def main(command: str | None, args: list[str]) -> None:
         if command == "poll":
             log.info("poll %s", await poll_live_market(source, store, now_npt()))
             return
-        build_scheduler(source, store, repo, refresh_screener).start()
+        if command == "floorsheet-backfill":  # [DAYS] (default 90); resumable, skips days already stored
+            end = now_npt().date()
+            done = await backfill_floorsheet(source, repo, end - timedelta(days=int(args[0]) if args else 90), end)
+            log.info("floorsheet backfill: %d days, %d ticks", len(done), sum(done.values()))
+            return
+        build_scheduler(source, store, repo, refresh_screener, daily_jobs(repo)).start()
         log.info("worker started")
         await asyncio.Event().wait()
 

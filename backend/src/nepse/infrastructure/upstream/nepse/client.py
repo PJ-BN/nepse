@@ -2,6 +2,7 @@
 import asyncio
 import json
 from collections.abc import AsyncIterator
+from datetime import date
 
 import httpx
 from redis.asyncio import Redis
@@ -104,12 +105,18 @@ class NepseClient:
                 bars.append(parsers.index_bar(index_id, data["content"][0]))
         return bars
 
-    async def floorsheet(self) -> AsyncIterator[list[FloorsheetTick]]:
+    def floorsheet(self) -> AsyncIterator[list[FloorsheetTick]]:
+        return self._floorsheet()
+
+    def floorsheet_on(self, day: date) -> AsyncIterator[list[FloorsheetTick]]:
+        return self._floorsheet(businessDate=day.isoformat())
+
+    async def _floorsheet(self, **params) -> AsyncIterator[list[FloorsheetTick]]:
         page, pages = 0, 1
         market_id = (await self.market_open()).market_id
         while page < pages:
             data = await self._call("POST", "nots/nepse-data/floorsheet", PayloadKind.FLOORSHEET, market_id,
-                                    size=PAGE_SIZE, page=page, sort="contractId,asc")
+                                    size=PAGE_SIZE, page=page, sort="contractId,asc", **params)
             ticks, pages = parsers.floorsheet_page(data)
             yield ticks
             page += 1
