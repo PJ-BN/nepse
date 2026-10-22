@@ -43,7 +43,7 @@ export function CompanyPage({ symbol }: { symbol: string }) {
         {refresh.error && <span className="text-sm text-red-700">{refresh.error.message}</span>}
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        <ValuationCard v={data.valuation} />
+        <ValuationCard v={data.valuation} symbol={symbol} />
         <SectorFlags flags={data.flags} metrics={data.sector_metrics} />
       </div>
       <DepthPanel depth={data.depth} />

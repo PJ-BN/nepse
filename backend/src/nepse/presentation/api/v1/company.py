@@ -1,11 +1,17 @@
+import hmac
 import json
 import os
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query
 from pydantic import ValidationError
 
-from nepse.application.fundamentals.get_company_full import DEFAULT_RISK_FREE_RATE, get_company_full
+from nepse.application.fundamentals.get_company_full import (
+    DEFAULT_DCF_GROWTH,
+    DEFAULT_RISK_FREE_RATE,
+    DEFAULT_TERMINAL_GROWTH,
+    get_company_full,
+)
 from nepse.application.fundamentals.ingest import ingest_dividends, ingest_financials
 from nepse.application.fundamentals.ports import UpstreamError
 from nepse.domain.calendar.npt import now_npt
@@ -51,21 +57,36 @@ class LiveDepth:
 
 
 @router.get("/{symbol}/full")
-async def company_full(symbol: str, risk_free_rate: float = DEFAULT_RISK_FREE_RATE,
+async def company_full(symbol: str, risk_free_rate: float = Query(DEFAULT_RISK_FREE_RATE, ge=0, le=0.5),
+                       dcf_growth: float = Query(DEFAULT_DCF_GROWTH, ge=-0.5, le=1.0),
+                       terminal_growth: float = Query(DEFAULT_TERMINAL_GROWTH, ge=0, le=0.1),
                        repo: SqlFundamentalsRepository = Depends(_repo)) -> dict:
     data = await get_company_full(symbol, repo, now_npt().date(), RedisQuotes(), risk_free_rate=risk_free_rate,
+<<<<<<< HEAD
                                   depth=LiveDepth())
+=======
+                                  dcf_growth=dcf_growth, terminal_growth=terminal_growth)
+>>>>>>> refs/heads/claude/sharp-dubinsky-b79155
     if data is None:
         raise HTTPException(404, f"unknown symbol {symbol.upper()}")
     return data
 
 
+def guard_dev(token: str | None) -> None:
+    if os.getenv("NEPSE_DEV_ENDPOINTS") != "1":
+        raise HTTPException(404)
+    expected = os.getenv("NEPSE_ADMIN_TOKEN")
+    if expected and not hmac.compare_digest(token or "", expected):
+        raise HTTPException(403, "bad admin token")
+
+
 @router.post("/{symbol}/refresh")
 async def refresh(symbol: str, sector_metrics: dict | None = Body(None, embed=True),
+                  x_admin_token: str | None = Header(None),
                   repo: SqlFundamentalsRepository = Depends(_repo)) -> dict:
-    """Dev-only manual trigger; production runs the same use cases from feat/ingestion's scheduler."""
-    if os.getenv("NEPSE_DEV_ENDPOINTS", "1") == "0":  # set to 0 in production
-        raise HTTPException(404)
+    """Manual trigger; production runs the same use cases from the scheduler. Off unless NEPSE_DEV_ENDPOINTS=1,
+    and when NEPSE_ADMIN_TOKEN is set the X-Admin-Token header must match it."""
+    guard_dev(x_admin_token)
     nepalipaisa, merolagani = NepaliPaisaClient(), MeroLaganiClient()
     try:
         quarter = await ingest_financials(symbol, repo, [merolagani, nepalipaisa], nepalipaisa, sector_metrics)

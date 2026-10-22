@@ -9,6 +9,7 @@ from nepse.domain.fundamentals.sector_metrics import load_sector_metrics
 QUARTERS_SHOWN = 20  # five fiscal years
 DEFAULT_RISK_FREE_RATE = 0.06  # NRB 10-year development bond yield; override per request
 DEFAULT_DCF_GROWTH = 0.05
+DEFAULT_TERMINAL_GROWTH = 0.03
 
 
 def _r(x: float | None, nd: int = 2) -> float | None:
@@ -17,7 +18,12 @@ def _r(x: float | None, nd: int = 2) -> float | None:
 
 async def get_company_full(symbol: str, repo: FundamentalsRepository, today: date, quotes: LiveQuotes | None = None,
                            risk_free_rate: float = DEFAULT_RISK_FREE_RATE,
+<<<<<<< HEAD
                            dcf_growth: float = DEFAULT_DCF_GROWTH, depth: DepthProvider | None = None) -> dict | None:
+=======
+                           dcf_growth: float = DEFAULT_DCF_GROWTH,
+                           terminal_growth: float = DEFAULT_TERMINAL_GROWTH) -> dict | None:
+>>>>>>> refs/heads/claude/sharp-dubinsky-b79155
     symbol = symbol.upper()
     company = await repo.company(symbol)
     if company is None:
@@ -50,9 +56,9 @@ async def get_company_full(symbol: str, repo: FundamentalsRepository, today: dat
     dcf = None
     cash_flow = metrics.get("free_cash_flow") or (eps * shares if eps and shares else None)
     if cash_flow and cash_flow > 0 and shares:
-        value = v.dcf_value(cash_flow, dcf_growth, risk_free_rate)
+        value = v.dcf_value(cash_flow, dcf_growth, risk_free_rate, terminal_growth=terminal_growth)
         dcf = {"per_share": _r(value / shares), "risk_free_rate": risk_free_rate, "growth": dcf_growth,
-               "equity_risk_premium": 0.07, "terminal_growth": 0.03, "years": 5}
+               "equity_risk_premium": 0.07, "terminal_growth": terminal_growth, "years": 5}
 
     nav_row = await repo.latest_nav(company.id) if company.sector_code == "MUTUAL" else None
     nav = (nav_row and (nav_row.weekly_nav or nav_row.monthly_nav)) or metrics.get("weekly_nav") or metrics.get("monthly_nav")

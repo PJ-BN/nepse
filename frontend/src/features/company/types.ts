@@ -43,7 +43,7 @@ export type Valuation = {
   market_cap: number | null;
   enterprise_value: number | null;
   ev_ebitda: number | null;
-  dcf: { per_share: number; risk_free_rate: number; growth: number; years: number } | null;
+  dcf: { per_share: number; risk_free_rate: number; growth: number; terminal_growth: number; years: number } | null;
   price_to_life_fund: number | null;
   nav: number | null;
   nav_discount_pct: number | null;
