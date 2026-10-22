@@ -26,6 +26,7 @@ class DailyJob:
     id: str
     at: time  # NPT
     run: Callable[[], Awaitable[object]]
+    days: str = TRADING_DAYS
 
 
 def _guarded(job: DailyJob) -> Callable[[], Awaitable[None]]:
@@ -77,7 +78,7 @@ def build_scheduler(
     # mv_screener_snapshot every minute during the session (plan: "refreshed every 1 min"), and after EOD above.
     scheduler.add_job(screener, "cron", day_of_week=TRADING_DAYS, hour="10-15", minute="*", id="screener")
     for job in daily:
-        scheduler.add_job(_guarded(job), "cron", day_of_week=TRADING_DAYS, hour=job.at.hour, minute=job.at.minute, id=job.id)
+        scheduler.add_job(_guarded(job), "cron", day_of_week=job.days, hour=job.at.hour, minute=job.at.minute, id=job.id)
     scheduler.add_job(run_announcements, "cron", minute=7, id="announcements")  # hourly ShareSansar feed
     # Seed the live snapshot once at startup so the dashboard has data outside market hours.
     scheduler.add_job(poll, kwargs={"force": True}, id="seed_snapshot")

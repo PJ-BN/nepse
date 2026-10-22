@@ -47,3 +47,8 @@ class AdjustmentRepository(Protocol):
     async def save_factors(
         self, company_id: int, daily: list[tuple[date, float]], per_action: list[tuple[int, float]]
     ) -> None: ...
+
+
+class AdjustedReference(Protocol):
+    """Independent source of adjusted daily closes (NepseAlpha), used only to verify our own series."""
+    async def adjusted_closes(self, symbol: str, start: date, end: date) -> dict[date, float]: ...
