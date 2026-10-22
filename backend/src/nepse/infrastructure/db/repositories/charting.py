@@ -15,13 +15,15 @@ class SqlChartRepository:
 
     async def bars(self, symbol: str, start: date, end: date) -> list[Bar]:
         rows = await self.s.execute(text("""
-            SELECT o.trade_date, o.open, o.high, o.low, o.close, o.volume, o.adj_factor
+            SELECT o.trade_date, coalesce(o.open, o.prev_close, o.close) AS open,  -- NEPSE history has no open
+                   coalesce(o.high, o.close) AS high, coalesce(o.low, o.close) AS low,
+                   o.close, o.volume, o.adj_factor
             FROM ohlcv_daily o JOIN companies c ON c.id = o.company_id
             WHERE c.symbol = :symbol AND o.trade_date BETWEEN :start AND :end AND o.close IS NOT NULL
             ORDER BY o.trade_date"""), {"symbol": symbol, "start": start, "end": end})
         return [
-            Bar(r.trade_date, float(r.open or r.close), float(r.high or r.close), float(r.low or r.close),
-                float(r.close), int(r.volume or 0), float(r.adj_factor))
+            Bar(r.trade_date, float(r.open), float(r.high), float(r.low), float(r.close), int(r.volume or 0),
+                float(r.adj_factor))
             for r in rows
         ]
 
