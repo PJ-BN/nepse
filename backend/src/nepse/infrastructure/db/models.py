@@ -6,7 +6,7 @@ so parallel branches never edit this file.
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, Numeric, SmallInteger, String, Text
+from sqlalchemy import BigInteger, Date, DateTime, Enum, ForeignKey, Integer, Numeric, SmallInteger, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -29,7 +29,9 @@ class Company(Base):
     nepse_id: Mapped[int | None] = mapped_column(Integer, unique=True)
     name: Mapped[str] = mapped_column(Text)
     sector_id: Mapped[int | None] = mapped_column(ForeignKey("sectors.id"))
-    instrument_type: Mapped[str] = mapped_column(Text, default="EQUITY")  # PG enum instrument_type
+    instrument_type: Mapped[str] = mapped_column(
+        Enum("EQUITY", "PROMOTER", "MUTUAL_FUND", "DEBENTURE", name="instrument_type", create_type=False), default="EQUITY"
+    )
     listed_shares: Mapped[int | None] = mapped_column(BigInteger)
     public_shares: Mapped[int | None] = mapped_column(BigInteger)
     promoter_shares: Mapped[int | None] = mapped_column(BigInteger)
