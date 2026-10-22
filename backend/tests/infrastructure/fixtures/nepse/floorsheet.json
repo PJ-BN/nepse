@@ -1,0 +1,114 @@
+{
+ "totalAmount": 4880089108.16,
+ "totalQty": 13376489,
+ "floorsheets": {
+  "content": [
+   {
+    "contractId": 2026101604010653,
+    "stockSymbol": "RADHI",
+    "buyerMemberId": "34",
+    "sellerMemberId": "81",
+    "contractQuantity": 234,
+    "contractRate": 711,
+    "contractAmount": 166374,
+    "businessDate": "2026-10-16",
+    "tradeBookId": 200957814,
+    "stockId": 2776,
+    "buyerBrokerName": "Vision Securities Pvt. Ltd",
+    "sellerBrokerName": "Aakashbhairab Securities Ltd.",
+    "tradeTime": "2026-10-16T15:00:00.000876",
+    "securityName": "Radhi Bidyut Company Ltd"
+   },
+   {
+    "contractId": 2026101601009334,
+    "stockSymbol": "SAPIL",
+    "buyerMemberId": "1",
+    "sellerMemberId": "13",
+    "contractQuantity": 10,
+    "contractRate": 1129.6,
+    "contractAmount": 11296,
+    "businessDate": "2026-10-16",
+    "tradeBookId": 200958008,
+    "stockId": 9353,
+    "buyerBrokerName": "Kumari Securities Private Limited",
+    "sellerBrokerName": "Thrive Brokerage House Pvt. Ltd",
+    "tradeTime": "2026-10-16T14:59:59.919572",
+    "securityName": "Sarvottam Paints Industries Limited"
+   },
+   {
+    "contractId": 2026101604010652,
+    "stockSymbol": "MLBS",
+    "buyerMemberId": "52",
+    "sellerMemberId": "35",
+    "contractQuantity": 10,
+    "contractRate": 990,
+    "contractAmount": 9900,
+    "businessDate": "2026-10-16",
+    "tradeBookId": 200958003,
+    "stockId": 8018,
+    "buyerBrokerName": "Sundhara Securities Limited",
+    "sellerBrokerName": "Kohinoor Investment & Securities Pvt. Ltd.",
+    "tradeTime": "2026-10-16T14:59:59.893508",
+    "securityName": "Manushi Laghubitta Bittiya Sanstha Limited"
+   },
+   {
+    "contractId": 2026101601009333,
+    "stockSymbol": "MBL",
+    "buyerMemberId": "44",
+    "sellerMemberId": "44",
+    "contractQuantity": 200,
+    "contractRate": 273,
+    "contractAmount": 54600,
+    "businessDate": "2026-10-16",
+    "tradeBookId": 200957994,
+    "stockId": 140,
+    "buyerBrokerName": "Dynamic Money Managers Securities Pvt. Ltd.",
+    "sellerBrokerName": "Dynamic Money Managers Securities Pvt. Ltd.",
+    "tradeTime": "2026-10-16T14:59:59.865508",
+    "securityName": "Machhapuchhre Bank Limited"
+   },
+   {
+    "contractId": 2026101603007761,
+    "stockSymbol": "SHINE",
+    "buyerMemberId": "7",
+    "sellerMemberId": "13",
+    "contractQuantity": 10,
+    "contractRate": 418,
+    "contractAmount": 4180,
+    "businessDate": "2026-10-16",
+    "tradeBookId": 200957991,
+    "stockId": 473,
+    "buyerBrokerName": "J.F. Securites (PVT) Ltd.",
+    "sellerBrokerName": "Thrive Brokerage House Pvt. Ltd",
+    "tradeTime": "2026-10-16T14:59:59.863252",
+    "securityName": "Shine Resunga Development Bank Ltd."
+   }
+  ],
+  "pageable": {
+   "sort": {
+    "sorted": true,
+    "unsorted": false,
+    "empty": false
+   },
+   "pageSize": 5,
+   "pageNumber": 0,
+   "offset": 0,
+   "paged": true,
+   "unpaged": false
+  },
+  "totalPages": 7859,
+  "totalElements": 39295,
+  "last": false,
+  "number": 0,
+  "size": 5,
+  "numberOfElements": 5,
+  "sort": {
+   "sorted": true,
+   "unsorted": false,
+   "empty": false
+  },
+  "first": true,
+  "empty": false
+ },
+ "totalTrades": 39295
+}

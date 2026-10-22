@@ -1,0 +1,24 @@
+{
+ "prove": {
+  "serverTime": 1792653813000,
+  "salt": "'!45u+k%Ek&X@+~(QM#i",
+  "accessToken": "eyJlbmMiOiJBMTI4Q0JDLUhTM0jU2IiwiYWxnIjMoiZGlyIn0..9tmDK_Rw2sgNjRho5rJyiOw.cHoPKPbWVUndmPxDY3hK8AZ9ushgSx6DKOmgGqmgR6nup1zjBLj0-xw0hYtVDUWIcR-sf0fnmMJniwKZHWEF8-iuqZIgdrU29nsxquTUpJW1iUg103AI-ELPKiLFp8nx_Zhv2wgSI5eJmutRh0xOYByg.ZKXauMOSLFtFrMdHhuTOeg",
+  "tokenType": "",
+  "refreshToken": "eyJlbmMiOiJBMTI4Q0JDLUhTMjU2xIiwiYWxnIjoiZGlyInZ0..nx_83IeiDZkXLw1k_yFa7w.kx3JM10CuPnosrXE-JLplfvMMsyUUqGgqyOz3BcYdvl1fx3P3w58wzKxD7a707zmvx96Ws3OVDR91uKWdwkTNbRwsyltb0pY2C_OnJNMss1XmDJjCogcqnNFzXgOCRfgS07B14a5EsPtsS5T6Qt_9VzkA.jM-yqJ4kqIgt0w0b66tDWg",
+  "salt1": 98631,
+  "salt2": 13318,
+  "salt3": 19584,
+  "salt4": 94287,
+  "salt5": 75318,
+  "isDisplayActive": false,
+  "popupDocFor": ""
+ },
+ "cuts": [
+  25,
+  39,
+  67,
+  92,
+  116
+ ],
+ "token": "eyJlbmMiOiJBMTI4Q0JDLUhTMjU2IiwiYWxnIjoiZGlyIn0..9tmDK_Rw2sgNjRhorJyiOw.cHoPKPbWVUndmPxDYhK8AZ9ushgSx6DKOmgGqmgRnup1zjBLj0-xw0hYtVDUWIcR-sf0fnmMJniwKZHWEF8-iuqZIgdrU29nsxquTUpJW1iUg103AI-ELPKiLFp8nx_Zhv2wgSI5eJmutRh0xOYByg.ZKXauMOSLFtFrMdHhuTOeg"
+}

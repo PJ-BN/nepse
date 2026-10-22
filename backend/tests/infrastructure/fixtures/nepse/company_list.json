@@ -1,0 +1,98 @@
+[
+ {
+  "id": 131,
+  "companyName": "Nabil Bank Limited",
+  "symbol": "NABIL",
+  "securityName": "Nabil Bank Limited",
+  "status": "A",
+  "companyEmail": "company.affairs@nabilbank.com",
+  "website": "www.nabilbank.com",
+  "sectorName": "Commercial Banks",
+  "regulatoryBody": "Nepal Rastra Bank",
+  "instrumentType": "Equity"
+ },
+ {
+  "id": 136,
+  "companyName": "Nepal Bangladesh Bank Limited",
+  "symbol": "NBB",
+  "securityName": "Nepal Bangladesh Bank Limited",
+  "status": "D",
+  "companyEmail": "bishwapoudel@nbbl.com.np",
+  "website": "",
+  "sectorName": "Commercial Banks",
+  "regulatoryBody": "Nepal Rastra Bank",
+  "instrumentType": "Equity"
+ },
+ {
+  "id": 138,
+  "companyName": "Bank of Kathmandu Ltd.",
+  "symbol": "BOKL",
+  "securityName": "Bank of Kathmandu Ltd.",
+  "status": "D",
+  "companyEmail": "deepak.gautam@bok.com.np",
+  "website": "",
+  "sectorName": "Commercial Banks",
+  "regulatoryBody": "Nepal Rastra Bank",
+  "instrumentType": "Equity"
+ },
+ {
+  "id": 143,
+  "companyName": "Lumbini Bank Limited",
+  "symbol": "LUBL",
+  "securityName": "Lumbini Bank Limited",
+  "status": "D",
+  "companyEmail": "info@lumbinibank.com.np",
+  "website": "",
+  "sectorName": "Commercial Banks",
+  "regulatoryBody": "Nepal Rastra Bank",
+  "instrumentType": "Equity"
+ },
+ {
+  "id": 144,
+  "companyName": "Nepal Credit And Commercial Bank Limited",
+  "symbol": "NCCB",
+  "securityName": "Nepal Credit And Commercial Bank Limited",
+  "status": "D",
+  "companyEmail": "corporate@nccbank.com.np",
+  "website": "http://www.nccbank.com.np",
+  "sectorName": "Commercial Banks",
+  "regulatoryBody": "Nepal Rastra Bank",
+  "instrumentType": "Equity"
+ },
+ {
+  "id": 146,
+  "companyName": "Yak And Yeti Hotel Limited",
+  "symbol": "YHL",
+  "securityName": "Yak And Yeti Hotel Limited",
+  "status": "S",
+  "companyEmail": "yhl@yhl.com",
+  "website": "",
+  "sectorName": "Hotels And Tourism",
+  "regulatoryBody": "Ministry of Tourism",
+  "instrumentType": "Equity"
+ },
+ {
+  "id": 150,
+  "companyName": "National Pro. And Eco. Dev. Centre",
+  "symbol": "ESC",
+  "securityName": "National Pro. And Eco. Dev. Centre",
+  "status": "D",
+  "companyEmail": "esc@esc.com",
+  "website": "",
+  "sectorName": "Others",
+  "regulatoryBody": "N/A",
+  "instrumentType": "Equity"
+ },
+ {
+  "id": 151,
+  "companyName": "Nepal Film Development Company Limited",
+  "symbol": "NFD",
+  "securityName": "Nepal Film Development Company Limited",
+  "status": "S",
+  "companyEmail": "nfd@nfd.com",
+  "website": "",
+  "sectorName": "Others",
+  "regulatoryBody": "N/A",
+  "instrumentType": "Equity"
+ }
+]
