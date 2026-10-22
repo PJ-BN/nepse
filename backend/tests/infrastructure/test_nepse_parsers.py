@@ -55,3 +55,12 @@ def test_listed_companies_skips_delisted_and_maps_sectors():
     by_symbol = {c.symbol: c for c in companies}
     assert by_symbol["NABIL"].sector_code == "BANKING" and by_symbol["NABIL"].nepse_id == 131
     assert all(c.status != "D" for c in companies)
+
+
+def test_promoter_shares_inherit_parent_sector():
+    companies = [{"symbol": "ALICL", "companyName": "Asian Life Insurance Co. Ltd", "securityName": "Asian Life Insurance Co. Ltd",
+                  "sectorName": "Life Insurance", "instrumentType": "Equity", "status": "A"}]
+    securities = [{"id": 1, "symbol": "ALICL", "securityName": "Asian Life Insurance Co. Ltd", "activeStatus": "A"},
+                  {"id": 2, "symbol": "ALICLP", "securityName": "Asian Life Insurance Co. Ltd Promoter Share", "activeStatus": "A"}]
+    promoter = {c.symbol: c for c in parsers.listed_companies(companies, securities)}["ALICLP"]
+    assert (promoter.instrument_type, promoter.sector_code, promoter.nepse_id) == ("PROMOTER", "LIFEINSU", 2)

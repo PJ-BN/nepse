@@ -17,7 +17,7 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/130.0 Safari/537.36",
 }
-PAGE_SIZE = 500
+PAGE_SIZE = 50  # the endpoints return an EMPTY result (not an error) for length > 50
 REQUEST_DELAY = 1.0  # seconds between requests; ShareSansar is a community site, keep the load trivial
 
 _TOKEN = re.compile(r'name="_token" content="([^"]+)"')
@@ -143,7 +143,7 @@ class ShareSansarClient:
             start += PAGE_SIZE
             if not page or page[-1].trade_date < since or start >= int(data["recordsTotal"]):
                 break
-        dividends = await self._table("company-dividend", token, company_id, 0, 200)
-        rights = await self._table("company-rightshare", token, company_id, 0, 200)
+        dividends = await self._table("company-dividend", token, company_id, 0, PAGE_SIZE)
+        rights = await self._table("company-rightshare", token, company_id, 0, PAGE_SIZE)
         actions = dividend_rows(symbol, dividends["data"]) + right_rows(symbol, rights["data"])
         return with_prev_close(bars), merge_actions(actions)

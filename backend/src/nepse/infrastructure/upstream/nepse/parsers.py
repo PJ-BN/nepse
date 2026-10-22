@@ -99,6 +99,8 @@ def floorsheet_page(data: dict) -> tuple[list[FloorsheetTick], int]:
 def listed_companies(companies: list[dict], securities: list[dict]) -> list[ListedCompany]:
     """Join nots/company/list (sector, type, status) with nots/security (security id) on symbol."""
     security_ids = {s["symbol"]: int(s["id"]) for s in securities}
+    sector_by_name = {_base_name(c.get("securityName") or c["companyName"]): SECTOR_CODES.get(c.get("sectorName"))
+                      for c in companies}
     out = []
     for c in companies:
         instrument = INSTRUMENT_TYPES.get(c.get("instrumentType"))
@@ -109,4 +111,19 @@ def listed_companies(companies: list[dict], securities: list[dict]) -> list[List
             symbol=c["symbol"], name=c.get("securityName") or c["companyName"], sector_code=sector,
             instrument_type=instrument, status=c["status"], nepse_id=security_ids.get(c["symbol"]),
         ))
+    # Promoter shares trade (and show up in floorsheets) but are absent from company/list; the security list
+    # names them "<Company> Promoter Share", which also gives the parent's sector.
+    listed = {c.symbol for c in out}
+    for s in securities:
+        if s["symbol"] not in listed and "promoter" in s["securityName"].lower():
+            out.append(ListedCompany(
+                symbol=s["symbol"], name=s["securityName"], sector_code=sector_by_name.get(_base_name(s["securityName"])),
+                instrument_type="PROMOTER", status=s.get("activeStatus") or "A", nepse_id=int(s["id"]),
+            ))
     return out
+
+
+def _base_name(name: str) -> str:
+    """'Asian Life Insurance Co. Ltd Promoter Share' -> 'asian life insurance co. ltd' (for parent lookup)."""
+    name = name.lower()
+    return name[: name.index("promoter")].strip() if "promoter" in name else name.strip()

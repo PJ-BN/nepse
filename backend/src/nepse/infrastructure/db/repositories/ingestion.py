@@ -134,5 +134,5 @@ class SqlIngestionRepository:
         async with self._engine.connect() as conn:
             conn = await conn.execution_options(isolation_level="AUTOCOMMIT")
             for view in ("broker_buy_daily", "broker_sell_daily"):
-                await conn.execute(text(f"CALL refresh_continuous_aggregate('{view}', :start, :end)"),
+                await conn.execute(text(f"CALL refresh_continuous_aggregate('{view}', CAST(:start AS timestamptz), CAST(:end AS timestamptz))"),
                                    {"start": window[0], "end": window[1]})
