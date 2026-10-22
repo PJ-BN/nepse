@@ -207,7 +207,10 @@ async def test_macro_repository(session):
     obs = [Observation(CD_RATIO, date(2026, 10, 10), 70.84, "nrb_home"),
            Observation(CD_RATIO, date(2026, 10, 11), 70.0, "nrb_home")]
     assert await repo.upsert_observations(obs) == 2
-    await repo.upsert_observations([Observation(CD_RATIO, date(2026, 10, 11), 70.79, "nrb_home")])  # update
+    assert await repo.upsert_observations([  # update, with a duplicate key inside one batch
+        Observation(CD_RATIO, date(2026, 10, 11), 1.0, "nrb_home"),
+        Observation(CD_RATIO, date(2026, 10, 11), 70.79, "nrb_home"),
+    ]) == 1
     series = await repo.series((CD_RATIO, "interbank_rate"), date(2026, 1, 1))
     assert series == {CD_RATIO: [(date(2026, 10, 10), 70.84), (date(2026, 10, 11), 70.79)]}
 

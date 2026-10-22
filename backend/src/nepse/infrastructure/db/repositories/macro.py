@@ -17,16 +17,18 @@ class SqlMacroRepository:
         self.session = session
 
     async def upsert_observations(self, rows: list[Observation]) -> int:
-        if not rows:
+        # last one wins within a batch: ON CONFLICT cannot touch the same row twice in one statement
+        unique = {(r.indicator, r.obs_date): asdict(r) for r in rows}
+        if not unique:
             return 0
-        stmt = insert(MacroIndicator).values([asdict(r) for r in rows])
+        stmt = insert(MacroIndicator).values(list(unique.values()))
         stmt = stmt.on_conflict_do_update(
             index_elements=["indicator", "obs_date"],
             set_={"value": stmt.excluded.value, "source": stmt.excluded.source},
         )
         await self.session.execute(stmt)
         await self.session.commit()
-        return len(rows)
+        return len(unique)
 
     async def series(self, indicators: tuple[str, ...], since: date) -> dict[str, list[tuple[date, float]]]:
         q = (sa.select(MacroIndicator.indicator, MacroIndicator.obs_date, MacroIndicator.value)
