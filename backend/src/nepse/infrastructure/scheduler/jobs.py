@@ -11,6 +11,7 @@ from nepse.application.market.poll_live_market import poll_live_market
 from nepse.application.market.poll_whales import poll_whales
 from nepse.domain.calendar.npt import now_npt
 from nepse.domain.market.session import MarketStatus
+from nepse.infrastructure.scheduler.announcements_job import run_announcements
 
 log = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ def build_scheduler(
 
     # mv_screener_snapshot every minute during the session (plan: "refreshed every 1 min"), and after EOD above.
     scheduler.add_job(screener, "cron", day_of_week=TRADING_DAYS, hour="10-15", minute="*", id="screener")
+    scheduler.add_job(run_announcements, "cron", minute=7, id="announcements")  # hourly ShareSansar feed
     # Seed the live snapshot once at startup so the dashboard has data outside market hours.
     scheduler.add_job(poll, kwargs={"force": True}, id="seed_snapshot")
     return scheduler

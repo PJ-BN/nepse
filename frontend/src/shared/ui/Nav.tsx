@@ -6,6 +6,8 @@ const LINKS = [
   ["/floorsheet", "Floorsheet"],
   ["/screener", "Screener"],
   ["/macro", "Macro"],
+  ["/dividends", "Dividends"],
+  ["/ipo", "IPO"],
   ["/portfolio", "Portfolio"],
 ] as const;
 
