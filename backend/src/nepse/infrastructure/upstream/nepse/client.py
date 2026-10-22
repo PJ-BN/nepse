@@ -83,7 +83,11 @@ class NepseClient:
         return parsers.index_ticks(main, ts) + parsers.index_ticks(sub, ts)
 
     async def market_depth(self, symbol: str, nepse_id: int) -> MarketDepth:
-        return parsers.market_depth(symbol, await self._get(f"nots/nepse-data/marketdepth/{nepse_id}"), now_npt())
+        try:
+            data = await self._get(f"nots/nepse-data/marketdepth/{nepse_id}")
+        except ValueError:  # outside the session the endpoint answers 200 with an empty body: an empty book
+            data = {}
+        return parsers.market_depth(symbol, data, now_npt())
 
     async def listed_companies(self) -> list[ListedCompany]:
         companies = await self._get("nots/company/list")

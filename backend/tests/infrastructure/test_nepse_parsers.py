@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -71,3 +71,8 @@ def test_market_depth_keeps_top_five_per_side():
     assert len(d.buy) == 5 and len(d.sell) == 2
     assert (d.buy[0].price, d.buy[0].qty, d.buy[0].orders) == (510.0, 1000, 3)
     assert (d.total_buy_qty, d.total_sell_qty) == (5200, 4100)
+
+
+def test_market_depth_empty_book_outside_session():
+    d = parsers.market_depth("NABIL", {}, datetime(2026, 10, 22, 16, 0))
+    assert d.buy == () and d.sell == () and d.total_buy_qty == 0
