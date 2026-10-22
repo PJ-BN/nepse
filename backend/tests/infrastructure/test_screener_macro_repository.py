@@ -62,7 +62,8 @@ async def _seed(engine) -> None:
             "(2, 'HHH', 'Hydro Small', :hydro, 'EQUITY', 1000000, 'ACTIVE'),"
             "(3, 'DDD', 'Debenture', :bank, 'DEBENTURE', 1000, 'ACTIVE'),"
             "(4, 'III', 'Delisted', :bank, 'EQUITY', 1000, 'DELISTED'),"
-            "(5, 'NNN', 'No Bars', :hydro, 'EQUITY', 1000, 'ACTIVE')"), {"bank": sector["BANKING"], "hydro": sector["HYDRO"]})
+            "(5, 'NNN', 'No Bars', :hydro, 'EQUITY', 1000, 'ACTIVE'),"
+            "(6, 'PPP', 'Promoter', :bank, 'PROMOTER', 1000, 'ACTIVE')"), {"bank": sector["BANKING"], "hydro": sector["HYDRO"]})
         bars = []
         for i, d in enumerate(DAYS):
             # AAA had a 1:1 bonus at bar 100: older raw prices are double, adj_factor 0.5 restores continuity
@@ -75,8 +76,9 @@ async def _seed(engine) -> None:
             hc = 300 - i * 0.5
             bars.append({"cid": 2, "d": d, "o": hc, "h": hc + 2, "l": hc - 2, "c": hc, "p": hc + 0.5,
                          "v": 500, "t": hc * 500, "f": 1.0})
-            bars.append({"cid": 3, "d": d, "o": 1000, "h": 1000, "l": 1000, "c": 1000, "p": 1000,
-                         "v": 1, "t": 1000, "f": 1.0})
+            for cid in (3, 6):  # debenture and promoter listings trade too, but stay out of the universe
+                bars.append({"cid": cid, "d": d, "o": 1000, "h": 1000, "l": 1000, "c": 1000, "p": 1000,
+                             "v": 1, "t": 1000, "f": 1.0})
         await conn.execute(sa.text(
             "INSERT INTO ohlcv_daily (company_id, trade_date, open, high, low, close, prev_close, volume, turnover,"
             " adj_factor) VALUES (:cid, :d, :o, :h, :l, :c, :p, :v, :t, :f)"), bars)
@@ -120,7 +122,7 @@ async def session():
 async def test_snapshot_matches_domain_indicators(session):
     repo = SqlScreenerRepository(session)
     rows = {r["symbol"]: r for r in await repo.query(None, parse_sort(None), 100)}
-    assert set(rows) == {"AAA", "HHH", "NNN"}  # debenture and delisted excluded; no-bar company kept
+    assert set(rows) == {"AAA", "HHH", "NNN"}  # debenture, promoter and delisted excluded; no-bar company kept
 
     adj = [_aaa_close(i) for i in range(N_BARS)]
     a = rows["AAA"]
@@ -181,7 +183,7 @@ async def test_injection_through_values_is_inert(session, payload):
         sql = str(build_query(node, parse_sort(None), 10).compile(dialect=postgresql.dialect()))
         assert payload not in sql and "DROP" not in sql
         assert await repo.query(node, parse_sort(None), 10) == []
-    assert await session.scalar(sa.text("SELECT count(*) FROM companies")) == 5
+    assert await session.scalar(sa.text("SELECT count(*) FROM companies")) == 6
 
 
 @pytest.mark.parametrize("raw", [
@@ -198,7 +200,7 @@ async def test_injection_through_fields_and_ops_never_reaches_sql(session, raw):
 
 async def test_breadth_closes_are_adjusted(session):
     closes = await SqlScreenerRepository(session).adjusted_closes(400)
-    assert set(closes) == {"AAA", "HHH", "DDD"}  # active companies with bars (instrument filter is the MV's)
+    assert set(closes) == {"AAA", "HHH"}  # same universe as the snapshot: no debenture/promoter listings
     assert [c for _, c in closes["AAA"]][98:102] == pytest.approx([_aaa_close(i) for i in range(98, 102)])
 
 
@@ -244,7 +246,7 @@ async def test_api_endpoints(session):
         assert (await c.post("/api/v1/screener/run", json={"preset": "nope"})).status_code == 404
         assert len((await c.get("/api/v1/screener/presets")).json()) == 3
         b = (await c.get("/api/v1/breadth")).json()
-        assert b["as_of"] == "2026-10-15" and b["advances"] + b["declines"] + b["unchanged"] == 3
+        assert b["as_of"] == "2026-10-15" and b["advances"] + b["declines"] + b["unchanged"] == 2  # AAA, HHH
         assert (await c.get("/api/v1/macro/radar")).status_code == 200
         assert (await c.get("/api/v1/macro/rrg?timeframe=weekly")).json()["timeframe"] == "weekly"
         assert (await c.get("/api/v1/macro/rrg?timeframe=hourly")).status_code == 422

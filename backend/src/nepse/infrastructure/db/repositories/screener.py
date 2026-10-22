@@ -9,6 +9,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from nepse.application.screener.filter_ast import FIELDS, NUM, OUTPUT_COLUMNS, FieldRef, Group, Node, SortKey
 from nepse.infrastructure.db.models import Company, OhlcvDaily
 
+SCREENER_INSTRUMENTS = ("EQUITY", "MUTUAL_FUND")  # same universe as mv_screener_snapshot
 _TYPES = {NUM: sa.Float, "str": sa.Text}
 SNAPSHOT = sa.table(
     "mv_screener_snapshot",
@@ -69,14 +70,15 @@ class SqlScreenerRepository:
         await self.session.commit()
 
     async def adjusted_closes(self, days: int) -> dict[str, list[tuple[date, float]]]:
-        """BreadthRepository: adjusted closes of active companies over the last `days` calendar days."""
+        """BreadthRepository: adjusted closes of active equities/funds over the last `days` calendar days."""
         last = await self.session.scalar(sa.select(sa.func.max(OhlcvDaily.trade_date)))
         if last is None:
             return {}
         q = (
             sa.select(Company.symbol, OhlcvDaily.trade_date, OhlcvDaily.close * OhlcvDaily.adj_factor)
             .join(Company, Company.id == OhlcvDaily.company_id)
-            .where(Company.status == "ACTIVE", OhlcvDaily.close.is_not(None),
+            .where(Company.status == "ACTIVE", sa.cast(Company.instrument_type, sa.Text).in_(SCREENER_INSTRUMENTS),
+                   OhlcvDaily.close.is_not(None),
                    OhlcvDaily.trade_date > last - timedelta(days=days))
             .order_by(Company.symbol, OhlcvDaily.trade_date)
         )

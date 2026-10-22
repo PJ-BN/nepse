@@ -92,7 +92,8 @@ FROM companies co
 LEFT JOIN sectors s ON s.id = co.sector_id
 LEFT JOIN latest l ON l.company_id = co.id
 LEFT JOIN accum a ON a.company_id = co.id
-WHERE co.status = 'ACTIVE' AND co.instrument_type <> 'DEBENTURE'
+-- tradable common equity and mutual funds only: promoter shares and debentures are separate listings
+WHERE co.status = 'ACTIVE' AND co.instrument_type IN ('EQUITY', 'MUTUAL_FUND')
 WITH DATA;
 
 CREATE UNIQUE INDEX mv_screener_snapshot_symbol ON mv_screener_snapshot (symbol);
