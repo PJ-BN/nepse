@@ -122,6 +122,12 @@ async def main(command: str | None, args: list[str]) -> None:
     if command == "adjust":
         log.info("adjusted %d companies", await adjust(args or None))
         return
+    if command == "job":  # <id>: run one scheduled daily job now, e.g. `job macro_nrb`
+        jobs = {j.id: j for j in daily_jobs(SqlIngestionRepository(engine))}
+        if not args or args[0] not in jobs:
+            raise SystemExit(f"usage: job <{'|'.join(jobs)}>")
+        log.info("%s done: %s", args[0], await jobs[args[0]].run())
+        return
     if command == "verify-adjusted":  # [SYMBOL...] default: all active symbols
         log.info("verify-adjusted: %d symbols with breaches", await verify_adjusted_job(SqlIngestionRepository(engine), args or None))
         return
