@@ -83,6 +83,9 @@ class SqlAdjustmentRepository:
         self, company_id: int, daily: list[tuple[date, float]], per_action: list[tuple[int, float]]
     ) -> None:
         if daily:
+            # Chunks older than 3 years are compressed (0005_charting); one company's full history can exceed
+            # TimescaleDB's default 100k-tuple cap on decompression inside a single UPDATE.
+            await self.s.execute(text("SET LOCAL timescaledb.max_tuples_decompressed_per_dml_transaction = 0"))
             await self.s.execute(text("""
                 UPDATE ohlcv_daily o SET adj_factor = f.factor::numeric(14, 10)
                 FROM unnest(CAST(:dates AS date[]), CAST(:factors AS float8[])) AS f(d, factor)

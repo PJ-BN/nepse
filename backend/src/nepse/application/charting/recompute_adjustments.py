@@ -6,11 +6,14 @@ from nepse.domain.corporate_actions.adjustment import action_factors, cumulative
 async def recompute_adjustments(repo: AdjustmentRepository, company_id: int) -> int:
     """Returns the number of daily rows written. Call after corporate actions or history change."""
     closes = await repo.closes(company_id)
-    rows = await repo.actions(company_id)
+    # An action whose book closure is still ahead has not taken effect: it must not rescale the whole history.
+    last = closes[-1][0] if closes else None
+    rows = [r for r in await repo.actions(company_id) if last and r[1].book_closure_date <= last]
+    pending = [(i, 1.0) for i, a in await repo.actions(company_id) if not last or a.book_closure_date > last]
     actions = [a for _, a in rows]
     factors = action_factors(closes, actions)
     events = [(a.book_closure_date, f) for a, f in zip(actions, factors, strict=True)]
     dates = [d for d, _ in closes]
     daily = list(zip(dates, cumulative_factors(dates, events), strict=True))
-    await repo.save_factors(company_id, daily, [(i, f) for (i, _), f in zip(rows, factors, strict=True)])
+    await repo.save_factors(company_id, daily, [(i, f) for (i, _), f in zip(rows, factors, strict=True)] + pending)
     return len(daily)

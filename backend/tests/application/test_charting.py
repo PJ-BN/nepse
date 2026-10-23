@@ -73,3 +73,13 @@ async def test_intraday_history_flattens_bars():
             return []
 
     assert await get_intraday_history(Empty(), "X", datetime(2025, 1, 5, tzinfo=UTC), datetime(2025, 1, 6, tzinfo=UTC), "1") == {"s": "no_data"}
+
+
+async def test_recompute_ignores_actions_whose_book_closure_is_still_ahead():
+    closes = [(D[0], 480.0), (D[1], 500.0), (D[2], 400.0), (D[3], 410.0)]
+    repo = FakeAdjRepo(closes, [(7, CorporateAction(date(2025, 1, 5), 0.10, 0.20)),
+                                (8, CorporateAction(date(2025, 2, 1), 0.50, 0.0))])
+    await recompute_adjustments(repo, 1)
+    daily, per_action = repo.saved
+    assert [f for _, f in daily] == pytest.approx([0.8, 0.8, 1.0, 1.0])  # the Feb bonus does not touch January
+    assert dict(per_action)[8] == 1.0
