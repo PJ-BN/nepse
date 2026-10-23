@@ -3,6 +3,7 @@
 Run once by hand: `python -m nepse.workers.main eod` (or `poll`), or
 `python -m nepse.workers.main backfill [SYMBOL ...]` for 10 years of ShareSansar history (resumable).
 `python -m nepse.workers.main adjust [SYMBOL ...]` recomputes adj_factor from corporate actions (all by default).
+`python -m nepse.workers.main index-backfill` loads about a year of daily bars for all 17 indices.
 `python -m nepse.workers.main floorsheet-backfill [DAYS]` loads the last DAYS (90) days of floorsheet (resumable).
 """
 import asyncio
@@ -140,6 +141,9 @@ async def main(command: str | None, args: list[str]) -> None:
             return
         if command == "poll":
             log.info("poll %s", await poll_live_market(source, store, now_npt()))
+            return
+        if command == "index-backfill":  # the ~1 year of daily bars for all 17 indices (RRG, macro overlay)
+            log.info("index backfill: %d bars", await repo.upsert_index_bars(await source.index_history()))
             return
         if command == "floorsheet-backfill":  # [DAYS] (default 90); resumable, skips days already stored
             end = now_npt().date()

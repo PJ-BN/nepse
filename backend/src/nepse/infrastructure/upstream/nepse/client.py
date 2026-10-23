@@ -113,6 +113,15 @@ class NepseClient:
                 bars.append(parsers.index_bar(index_id, data["content"][0]))
         return bars
 
+    async def index_history(self) -> list[IndexBar]:
+        """Every index's daily bars the portal serves (about one year, a single page of up to 500 rows)."""
+        bars = []
+        for index_id in parsers.INDEX_IDS:
+            data = await self._get(f"nots/index/history/{index_id}", size=500, page=0)
+            bars += [parsers.index_bar(index_id, row) for row in data["content"]]
+            await asyncio.sleep(PAGE_DELAY)
+        return bars
+
     def floorsheet(self) -> AsyncIterator[list[FloorsheetTick]]:
         return self._floorsheet()
 
