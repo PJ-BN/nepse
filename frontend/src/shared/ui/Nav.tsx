@@ -7,6 +7,7 @@ const LINKS = [
   ["/company", "Companies"],
   ["/broker", "Brokers"],
   ["/screener", "Screener"],
+  ["/simulator", "Simulator"],
   ["/mutual-funds", "Mutual funds"],
   ["/macro", "Macro"],
   ["/dividends", "Dividends"],

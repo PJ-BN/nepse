@@ -13,6 +13,11 @@ export default async function ChartPage({ searchParams }: { searchParams: Promis
             Company page →
           </Link>
         )}
+        {sym && (
+          <Link href={`/simulator?symbol=${sym}`} className="ml-3 text-sm font-normal text-blue-700 hover:underline">
+            Simulate →
+          </Link>
+        )}
       </h1>
       <ChartView key={sym} symbol={sym} />
     </main>
