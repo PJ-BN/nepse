@@ -2,49 +2,8 @@
 
 import type { OverlayMode } from "klinecharts";
 import { useState } from "react";
-
-export const DRAWING_GROUPS: { label: string; tools: { name: string; label: string }[] }[] = [
-  {
-    label: "Lines",
-    tools: [
-      { name: "segment", label: "Trend line" },
-      { name: "rayLine", label: "Ray" },
-      { name: "straightLine", label: "Extended line" },
-      { name: "horizontalStraightLine", label: "Horizontal line" },
-      { name: "horizontalRayLine", label: "Horizontal ray" },
-      { name: "horizontalSegment", label: "Horizontal segment" },
-      { name: "verticalStraightLine", label: "Vertical line" },
-      { name: "verticalSegment", label: "Vertical segment" },
-      { name: "priceLine", label: "Price line" },
-    ],
-  },
-  {
-    label: "Channels & Fib",
-    tools: [
-      { name: "parallelStraightLine", label: "Parallel channel" },
-      { name: "priceChannelLine", label: "Price channel" },
-      { name: "fibonacciLine", label: "Fib retracement" },
-    ],
-  },
-  {
-    label: "Shapes & notes",
-    tools: [
-      { name: "rect", label: "Rectangle" },
-      { name: "circle", label: "Circle" },
-      { name: "polygon", label: "Polygon" },
-      { name: "arc", label: "Arc" },
-      { name: "text", label: "Text" },
-      { name: "simpleAnnotation", label: "Annotation" },
-      { name: "simpleTag", label: "Tag" },
-    ],
-  },
-];
-
-// Overlay indicators draw on the price pane; the rest get their own pane.
-export const MAIN_INDICATORS = ["MA", "EMA", "SMA", "BOLL", "SAR", "BBI"];
-export const SUB_INDICATORS = [
-  "VOL", "MACD", "RSI", "KDJ", "WR", "CCI", "DMI", "OBV", "ROC", "MTM", "TRIX", "AO", "BIAS", "PSY", "VR", "DMA", "EMV", "PVT", "BRAR", "CR",
-];
+import { INDICATORS } from "../klines/indicators";
+import { DRAWING_GROUPS } from "../klines/overlays";
 
 export const CHART_TYPES = [
   { value: "candle_solid", label: "Candles" },
@@ -120,13 +79,13 @@ export function IndicatorMenu({ active, onToggle }: { active: Set<string>; onTog
         <div className="absolute left-0 top-full z-20 mt-1 w-64 rounded border bg-background p-2 shadow-lg">
           <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="mb-2 w-full rounded border px-2 py-1 text-xs" />
           <div className="max-h-72 overflow-y-auto">
-            {([["On price", MAIN_INDICATORS, true], ["Separate pane", SUB_INDICATORS, false]] as const).map(([label, names, main]) => (
+            {([["On price", true], ["Separate pane", false]] as const).map(([label, main]) => (
               <div key={label} className="mb-2">
                 <span className="text-[10px] uppercase tracking-wide text-gray-500">{label}</span>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {names.filter(match).map((n) => (
+                  {INDICATORS.filter((i) => i.main === main && match(i.label ?? i.name)).map(({ name: n, label }) => (
                     <button key={n} type="button" aria-pressed={active.has(n)} onClick={() => onToggle(n, main)} className={`${btn} ${active.has(n) ? on : ""}`}>
-                      {n}
+                      {label ?? n}
                     </button>
                   ))}
                 </div>

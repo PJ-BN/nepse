@@ -4,6 +4,8 @@ import type { Chart, IndicatorCreate, KLineData, OverlayCreate, OverlayMode } fr
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadDrawings, saveDrawings } from "../drawings";
 import { DEFAULT_INDICATORS, type Candle, type Indicator, type PriceOverlay } from "../types";
+import { isMainIndicator, registerIndicators } from "../klines/indicators";
+import { registerOverlays } from "../klines/overlays";
 import { CHART_TYPES, DrawingToolbar, IndicatorMenu } from "./ChartTools";
 
 const UP = "#16a34a";
@@ -57,17 +59,22 @@ export function NepseTradingChart({
   intraday = false,
   indicators = DEFAULT_INDICATORS,
   symbol = "",
+  onChart,
 }: {
   candles: Candle[];
   overlay?: PriceOverlay[];
   intraday?: boolean;
   indicators?: Indicator[];
   symbol?: string;
+  /** Called with the live chart once it is ready (null on teardown), for panels outside this component. */
+  onChart?: (chart: Chart | null) => void;
 }) {
   const el = useRef<HTMLDivElement>(null);
   const chart = useRef<Chart | null>(null);
   const data = useRef<KLineData[]>([]);
   const symbolRef = useRef(symbol);
+  const onChartRef = useRef(onChart);
+  onChartRef.current = onChart;
   const magnetRef = useRef<OverlayMode>("normal");
   const [ready, setReady] = useState(false);
   const [active, setActive] = useState<string | null>(null);
@@ -109,8 +116,11 @@ export function NepseTradingChart({
     let cleanup = () => {};
     let dead = false;
     // klinecharts touches `window` on import, so it can't be loaded during SSR.
-    import("klinecharts").then(({ dispose, init }) => {
+    import("klinecharts").then((k) => {
+      const { dispose, init } = k;
       if (dead) return;
+      registerIndicators(k);
+      registerOverlays(k);
       const c = init(node, { timezone: "UTC", styles: dark() ? "dark" : "light" })!;
       c.setStyles(barStyles);
       c.setDataLoader({ getBars: ({ callback }) => callback(data.current, false) });
@@ -129,8 +139,10 @@ export function NepseTradingChart({
         size.disconnect();
         dispose(node);
         chart.current = null;
+        onChartRef.current?.(null);
       };
       setReady(true);
+      onChartRef.current?.(c);
     });
     return () => {
       dead = true;
@@ -152,7 +164,7 @@ export function NepseTradingChart({
     c.createIndicator("VOL", false);
     derived.forEach((i) => c.createIndicator(i, i.paneId === MAIN));
     extras.forEach((name) => {
-      if (!derived.some((d) => d.name === name)) c.createIndicator(MAIN_NAMES.includes(name) ? { name, paneId: MAIN } : name, MAIN_NAMES.includes(name));
+      if (!derived.some((d) => d.name === name)) c.createIndicator(isMainIndicator(name) ? { name, paneId: MAIN } : name, isMainIndicator(name));
     });
   }, [derived, extras, ready]);
 
@@ -269,7 +281,6 @@ export function NepseTradingChart({
   );
 }
 
-const MAIN_NAMES = ["MA", "EMA", "SMA", "BOLL", "SAR", "BBI"];
 
 function dark() {
   return document.documentElement.classList.contains("dark");
