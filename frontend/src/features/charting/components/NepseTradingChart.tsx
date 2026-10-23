@@ -52,6 +52,8 @@ function fromList(list: Indicator[]): IndicatorCreate[] {
   return out;
 }
 
+const NO_INDICATORS: IndicatorCreate[] = [];
+
 /**
  * Candles with a TradingView-style drawing toolbar, indicator menu and per-symbol saved drawings (klinecharts v10).
  * Fills its parent, so the parent decides the size (and can be drag-resized).
@@ -64,6 +66,7 @@ export function NepseTradingChart({
   symbol = "",
   timeframe,
   onChart,
+  extraIndicators = NO_INDICATORS,
 }: {
   candles: Candle[];
   overlay?: PriceOverlay[];
@@ -74,6 +77,8 @@ export function NepseTradingChart({
   timeframe?: string;
   /** Called with the live chart once it is ready (null on teardown), for panels outside this component. */
   onChart?: (chart: Chart | null) => void;
+  /** Extra main-pane indicators (e.g. a compare overlay) that survive the indicator rebuild. */
+  extraIndicators?: IndicatorCreate[];
 }) {
   const el = useRef<HTMLDivElement>(null);
   const chart = useRef<Chart | null>(null);
@@ -202,12 +207,13 @@ export function NepseTradingChart({
     c.removeIndicator();
     if (!removed.includes("VOL")) c.createIndicator("VOL", false);
     derived.filter((i) => !removed.includes(i.name)).forEach((i) => c.createIndicator(i, i.paneId === MAIN));
+    extraIndicators.forEach((i) => c.createIndicator({ ...i, paneId: MAIN }, true));
     extras.forEach((name) => {
       if (!derived.some((d) => d.name === name)) c.createIndicator(isMainIndicator(name) ? { name, paneId: MAIN } : name, isMainIndicator(name));
     });
     c.getIndicators().forEach((ind) => params[ind.name] && applyParams(c, ind, params[ind.name]));
     bump();
-  }, [derived, extras, removed, ready]);
+  }, [derived, extras, extraIndicators, removed, ready]);
 
   const render = useCallback(
     (list: Drawing[]) => {
