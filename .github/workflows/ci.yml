@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      db:
+        image: timescale/timescaledb:2.17.2-pg16
+        env:
+          POSTGRES_USER: nepse
+          POSTGRES_PASSWORD: nepse
+          POSTGRES_DB: nepse
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nepse -d nepse"
+          --health-interval 5s --health-retries 20
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql+asyncpg://nepse:nepse@localhost:5432/nepse
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.22"
+          python-version: "3.12"
+      - run: uv sync --frozen --extra dev
+      - run: uv run alembic upgrade head
+      - run: uv run pytest -q
+      - run: uv run lint-imports
+
+  frontend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm test
