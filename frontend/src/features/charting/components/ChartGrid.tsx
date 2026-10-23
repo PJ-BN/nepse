@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import type { Chart } from "klinecharts";
+import { useCallback, useEffect, useState } from "react";
+import { loadAlerts, saveAlerts, type Alert } from "../alerts";
+import { useChartSync } from "../hooks/useChartSync";
 import { DEFAULT_INDICATORS, type Indicator, type IndicatorType } from "../types";
+import { AlertToasts } from "./Alerts";
 import { ChartView } from "./ChartView";
 
 const MAX_CHARTS = 6;
@@ -18,6 +22,9 @@ export function ChartGrid({ initial }: { initial: string[] }) {
   const [cols, setCols] = useState(initial.length > 1 ? 2 : 1);
   const [size, setSize] = useState<Size>("fit");
   const [indicators, setIndicators] = useState<Indicator[]>(DEFAULT_INDICATORS);
+  const [sync, setSync] = useState(false);
+  const [charts, setCharts] = useState<(Chart | null)[]>([]);
+  const [alerts, setAlertsState] = useState<Alert[]>([]);
   const [draft, setDraft] = useState<{ type: IndicatorType; period: number; color: string }>({ type: "ema", period: 9, color: "#10b981" });
 
   useEffect(() => {
@@ -36,6 +43,13 @@ export function ChartGrid({ initial }: { initial: string[] }) {
       // storage unavailable: indicators just won't persist
     }
   };
+
+  useEffect(() => setAlertsState(loadAlerts()), []);
+  const setAlerts = useCallback((next: Alert[]) => {
+    setAlertsState(next);
+    saveAlerts(next);
+  }, []);
+  useChartSync(charts, sync);
 
   const update = (next: string[]) => {
     setSymbols(next);
@@ -76,6 +90,10 @@ export function ChartGrid({ initial }: { initial: string[] }) {
           <select value={size} onChange={(e) => setSize(e.target.value as Size)} className="rounded border px-1 py-1">
             {Object.entries(SIZES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
+        </label>
+        <label className="flex items-center gap-1" title="Mirror scroll, zoom and crosshair across the charts">
+          <input type="checkbox" checked={sync} onChange={(e) => setSync(e.target.checked)} />
+          Sync charts
         </label>
         <span className="text-gray-500">Drag a chart&apos;s bottom edge to resize it.</span>
       </div>
@@ -127,11 +145,16 @@ export function ChartGrid({ initial }: { initial: string[] }) {
             symbol={s}
             indicators={indicators}
             height={height}
+            onChart={(c) => setCharts((p) => Object.assign([...p], { [i]: c }))}
+            alerts={alerts}
+            onAddAlert={(a) => setAlerts([...alerts, a])}
+            onRemoveAlert={(id) => setAlerts(alerts.filter((a) => a.id !== id))}
             onSymbolChange={(v) => update(symbols.map((x, j) => (j === i ? v : x)))}
             onRemove={symbols.length > 1 ? () => update(symbols.filter((_, j) => j !== i)) : undefined}
           />
         ))}
       </div>
+      <AlertToasts alerts={alerts} onChange={setAlerts} />
     </div>
   );
 }

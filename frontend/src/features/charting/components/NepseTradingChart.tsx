@@ -2,11 +2,14 @@
 
 import type { Chart, IndicatorCreate, KLineData, OverlayCreate, OverlayMode } from "klinecharts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { loadDrawings, saveDrawings } from "../drawings";
+import { ALL_TF, extendOf, stripId, loadDrawings, saveDrawings, snapshot, type Drawing } from "../drawings";
+import { applyParams, DEFAULT_SETTINGS, deleteLayout, loadLayouts, loadSettings, saveLayout, saveSettings, type ChartSettings, type IndicatorParams } from "../settings";
+import { History } from "../undo";
 import { DEFAULT_INDICATORS, type Candle, type Indicator, type PriceOverlay } from "../types";
 import { isMainIndicator, registerIndicators } from "../klines/indicators";
 import { registerOverlays } from "../klines/overlays";
 import { CHART_TYPES, DrawingToolbar, IndicatorMenu } from "./ChartTools";
+import { IndicatorSettings, LayoutMenu, PropertiesPanel } from "./EditPanels";
 
 const UP = "#16a34a";
 const DOWN = "#dc2626";
@@ -49,6 +52,8 @@ function fromList(list: Indicator[]): IndicatorCreate[] {
   return out;
 }
 
+const NO_INDICATORS: IndicatorCreate[] = [];
+
 /**
  * Candles with a TradingView-style drawing toolbar, indicator menu and per-symbol saved drawings (klinecharts v10).
  * Fills its parent, so the parent decides the size (and can be drag-resized).
@@ -59,15 +64,21 @@ export function NepseTradingChart({
   intraday = false,
   indicators = DEFAULT_INDICATORS,
   symbol = "",
+  timeframe,
   onChart,
+  extraIndicators = NO_INDICATORS,
 }: {
   candles: Candle[];
   overlay?: PriceOverlay[];
   intraday?: boolean;
   indicators?: Indicator[];
   symbol?: string;
+  /** Resolution the chart shows (drawings are saved per symbol + timeframe). Defaults from `intraday`. */
+  timeframe?: string;
   /** Called with the live chart once it is ready (null on teardown), for panels outside this component. */
   onChart?: (chart: Chart | null) => void;
+  /** Extra main-pane indicators (e.g. a compare overlay) that survive the indicator rebuild. */
+  extraIndicators?: IndicatorCreate[];
 }) {
   const el = useRef<HTMLDivElement>(null);
   const chart = useRef<Chart | null>(null);
@@ -81,14 +92,41 @@ export function NepseTradingChart({
   const [magnet, setMagnet] = useState<OverlayMode>("normal");
   const [locked, setLocked] = useState(false);
   const [hidden, setHidden] = useState(false);
-  const [extras, setExtras] = useState<string[]>([]);
-  const [type, setType] = useState<string>("candle_solid");
-  const [axis, setAxis] = useState<string>("normal");
+  const [settings, setSettings] = useState<ChartSettings>(DEFAULT_SETTINGS);
+  const settingsRef = useRef(DEFAULT_SETTINGS);
+  const [layouts, setLayouts] = useState<Record<string, ChartSettings>>({});
+  const [panel, setPanel] = useState<"indicators" | "layouts" | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [, setTick] = useState(0);
+  const bump = () => setTick((t) => t + 1);
+  const tf = timeframe ?? (intraday ? "intraday" : "1D");
+  const tfRef = useRef(tf);
+  const allIds = useRef(new Set<string>());
+  const history = useRef(new History<Drawing[]>([]));
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const { type, axis, extras, removed } = settings;
   const derived = useMemo(() => fromList(indicators), [indicators]);
 
-  // Deferred so removals/moves have settled before we snapshot the overlays.
-  const persist = useCallback(() => {
-    setTimeout(() => chart.current && saveDrawings(symbolRef.current, chart.current), 0);
+  const update = (patch: Partial<ChartSettings>) => {
+    const next = { ...settingsRef.current, ...patch };
+    settingsRef.current = next;
+    setSettings(next);
+    saveSettings(next);
+  };
+
+  // The finished drawings on the chart, without ids (ids change when a snapshot is re-created).
+  const read = () => snapshot(chart.current!, tfRef.current, allIds.current).map(stripId);
+
+  // Deferred so removals/moves have settled; one undo step per burst of changes.
+  const persist = useCallback((delay = 0) => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      if (!chart.current) return;
+      const now = read();
+      history.current.push(now);
+      saveDrawings(symbolRef.current, tfRef.current, now);
+      setTick((t) => t + 1);
+    }, delay);
   }, []);
 
   const draw = useCallback(
@@ -99,8 +137,13 @@ export function NepseTradingChart({
           setActive(null);
           persist();
         },
-        onPressedMoveEnd: persist,
-        onRemoved: persist,
+        onPressedMoveEnd: () => persist(),
+        onRemoved: (e) => {
+          setSelected((s) => (s === e.overlay.id ? null : s));
+          persist();
+        },
+        onSelected: (e) => setSelected(e.overlay.id),
+        onDeselected: (e) => setSelected((s) => (s === e.overlay.id ? null : s)),
         onRightClick: (e) => {
           chart.current?.removeOverlay({ id: e.overlay.id });
         },
@@ -156,26 +199,74 @@ export function NepseTradingChart({
     chart.current?.resetData();
   }, [candles, intraday, ready]);
 
-  // Rebuilt whenever the grid's indicator list or the menu's extras change.
+  // Rebuilt whenever the grid's indicator list or the menu's extras/removals change; params are re-applied on top.
   useEffect(() => {
     const c = chart.current;
     if (!c) return;
+    const { params } = settingsRef.current;
     c.removeIndicator();
-    c.createIndicator("VOL", false);
-    derived.forEach((i) => c.createIndicator(i, i.paneId === MAIN));
+    if (!removed.includes("VOL")) c.createIndicator("VOL", false);
+    derived.filter((i) => !removed.includes(i.name)).forEach((i) => c.createIndicator(i, i.paneId === MAIN));
+    extraIndicators.forEach((i) => c.createIndicator({ ...i, paneId: MAIN }, true));
     extras.forEach((name) => {
       if (!derived.some((d) => d.name === name)) c.createIndicator(isMainIndicator(name) ? { name, paneId: MAIN } : name, isMainIndicator(name));
     });
-  }, [derived, extras, ready]);
+    c.getIndicators().forEach((ind) => params[ind.name] && applyParams(c, ind, params[ind.name]));
+    bump();
+  }, [derived, extras, extraIndicators, removed, ready]);
 
-  // Swap in the saved drawings for the new symbol.
+  const render = useCallback(
+    (list: Drawing[]) => {
+      chart.current?.removeOverlay();
+      allIds.current.clear();
+      setSelected(null);
+      list.forEach(({ tf: t, ...d }) => {
+        const id = draw(d as never);
+        if (typeof id === "string" && t === ALL_TF) allIds.current.add(id);
+      });
+    },
+    [draw],
+  );
+
+  // Swap in the saved drawings for the new symbol/timeframe, with a fresh undo history.
   useEffect(() => {
     const c = chart.current;
     symbolRef.current = symbol;
+    tfRef.current = tf;
     if (!c) return;
-    c.removeOverlay();
-    loadDrawings(symbol).forEach((d) => draw(d as never));
-  }, [symbol, draw, ready]);
+    render(loadDrawings(symbol, tf));
+    history.current.reset(read());
+    setTick((t) => t + 1);
+  }, [symbol, tf, render, ready]);
+
+  // Saved settings (indicator params, chart type, scale) are read after mount so SSR markup matches.
+  useEffect(() => {
+    const s = loadSettings();
+    settingsRef.current = s;
+    setSettings(s);
+    setLayouts(loadLayouts());
+  }, []);
+
+  useEffect(() => {
+    const c = chart.current;
+    if (!c) return;
+    c.setStyles({ candle: { type: type as never } });
+    c.overrideYAxis({ name: axis, paneId: MAIN });
+  }, [type, axis, ready]);
+
+  const commit = (next: Drawing[]) => {
+    history.current.push(next);
+    render(next);
+    saveDrawings(symbolRef.current, tfRef.current, next);
+    bump();
+  };
+  const step = (dir: "undo" | "redo") => {
+    const prev = history.current[dir]();
+    if (!prev) return;
+    render(prev);
+    saveDrawings(symbolRef.current, tfRef.current, prev);
+    bump();
+  };
 
   useEffect(() => {
     if (!chart.current) return;
@@ -195,43 +286,79 @@ export function NepseTradingChart({
 
   const apply = (patch: Partial<OverlayCreate>) => chart.current?.overrideOverlay(patch);
   const mine = () => chart.current?.getOverlays().filter((o) => o.groupId !== "vwap") ?? [];
-  const activeNames = new Set([...derived.map((d) => d.name), ...extras]);
+  const base = ["VOL", ...derived.map((d) => d.name)];
+  const activeNames = new Set([...base, ...extras].filter((n) => !removed.includes(n)));
+  const sel = selected ? chart.current?.getOverlays({ id: selected })[0] : undefined;
+  const removeIndicator = (name: string) =>
+    update(base.includes(name) ? { removed: [...removed, name] } : { extras: extras.filter((x) => x !== name) });
+  const btn = "rounded border px-2 py-1 hover:bg-foreground/10";
 
   return (
-    <div className="flex h-full flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
+    <div
+      className="flex h-full flex-col gap-2 outline-none"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if ((e.target as HTMLElement).closest("input, select, textarea")) return;
+        const k = e.key.toLowerCase();
+        if ((e.ctrlKey || e.metaKey) && k === "z") {
+          e.preventDefault();
+          step(e.shiftKey ? "redo" : "undo");
+        } else if ((e.ctrlKey || e.metaKey) && k === "y") {
+          e.preventDefault();
+          step("redo");
+        } else if ((k === "delete" || k === "backspace") && selected) {
+          chart.current?.removeOverlay({ id: selected });
+        }
+      }}
+    >
+      <div className="flex flex-wrap items-start gap-2 text-xs">
         <IndicatorMenu
           active={activeNames}
           onToggle={(name) => {
-            if (derived.some((d) => d.name === name)) return; // owned by the grid's indicator list
-            setExtras((e) => (e.includes(name) ? e.filter((x) => x !== name) : [...e, name]));
+            if (removed.includes(name)) update({ removed: removed.filter((x) => x !== name) });
+            else if (activeNames.has(name)) removeIndicator(name);
+            else update({ extras: [...extras, name] });
           }}
         />
-        <select
-          aria-label="Chart type"
-          value={type}
-          onChange={(e) => {
-            setType(e.target.value);
-            chart.current?.setStyles({ candle: { type: e.target.value as never } });
-          }}
-          className="rounded border bg-background px-2 py-1"
-        >
+        <div className="relative">
+          <button type="button" aria-expanded={panel === "indicators"} className={btn} onClick={() => setPanel(panel === "indicators" ? null : "indicators")}>
+            Indicator settings
+          </button>
+          {panel === "indicators" && chart.current && (
+            <div className="absolute left-0 top-full z-20 mt-1">
+              <IndicatorSettings
+                chart={chart.current}
+                params={settings.params}
+                onParams={(name, p: IndicatorParams) => update({ params: { ...settings.params, [name]: p } })}
+                onRemove={removeIndicator}
+              />
+            </div>
+          )}
+        </div>
+        <div className="relative">
+          <button type="button" aria-expanded={panel === "layouts"} className={btn} onClick={() => setPanel(panel === "layouts" ? null : "layouts")}>
+            Layouts
+          </button>
+          {panel === "layouts" && (
+            <div className="absolute left-0 top-full z-20 mt-1">
+              <LayoutMenu
+                layouts={layouts}
+                onSave={(name) => setLayouts(saveLayout(name, settings))}
+                onLoad={(s) => update(s)}
+                onDelete={(name) => setLayouts(deleteLayout(name))}
+              />
+            </div>
+          )}
+        </div>
+        <select aria-label="Chart type" value={type} onChange={(e) => update({ type: e.target.value })} className="rounded border bg-background px-2 py-1">
           {CHART_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
-        <select
-          aria-label="Price scale"
-          value={axis}
-          onChange={(e) => {
-            setAxis(e.target.value);
-            chart.current?.overrideYAxis({ name: e.target.value, paneId: MAIN });
-          }}
-          className="rounded border bg-background px-2 py-1"
-        >
+        <select aria-label="Price scale" value={axis} onChange={(e) => update({ axis: e.target.value })} className="rounded border bg-background px-2 py-1">
           {AXES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
         </select>
         <button
           type="button"
-          className="rounded border px-2 py-1 hover:bg-hover"
+          className={btn}
           onClick={() => {
             const url = chart.current?.getConvertPictureUrl(true, "png", dark() ? "#0b0b0f" : "#fff");
             if (!url) return;
@@ -244,12 +371,41 @@ export function NepseTradingChart({
           Screenshot
         </button>
       </div>
-      <div className="flex min-h-0 flex-1 gap-2">
+      <div className="relative flex min-h-0 flex-1 gap-2">
+      {sel && sel.currentStep === -1 && (
+        <div className="absolute right-16 top-2 z-10 max-w-[calc(100%-9rem)]">
+        <PropertiesPanel
+          key={sel.id}
+          overlay={sel}
+          allTimeframes={allIds.current.has(sel.id)}
+          onStyle={(styles) => {
+            chart.current?.overrideOverlay({ id: sel.id, styles } as never);
+            persist(400);
+            bump();
+          }}
+          onExtend={(level) => {
+            const fam = extendOf(sel.name);
+            const snap = snapshot(chart.current!, tfRef.current, allIds.current);
+            const i = snap.findIndex((d) => d.id === sel.id);
+            if (!fam || i < 0) return;
+            commit(snap.map(stripId).map((d, j) => (j === i ? { ...d, name: fam.family[level] } : d)));
+          }}
+          onAllTimeframes={(on) => {
+            if (on) allIds.current.add(sel.id);
+            else allIds.current.delete(sel.id);
+            persist();
+          }}
+          onDelete={() => chart.current?.removeOverlay({ id: sel.id })}
+        />
+        </div>
+      )}
         <DrawingToolbar
           active={active}
           magnet={magnet}
           locked={locked}
           hidden={hidden}
+          canUndo={history.current.canUndo}
+          canRedo={history.current.canRedo}
           onPick={(name) => {
             setActive(name);
             draw({ name });
@@ -269,10 +425,8 @@ export function NepseTradingChart({
             setHidden(!hidden);
             apply({ visible: hidden });
           }}
-          onUndo={() => {
-            const last = mine().at(-1);
-            if (last) chart.current?.removeOverlay({ id: last.id });
-          }}
+          onUndo={() => step("undo")}
+          onRedo={() => step("redo")}
           onClear={() => mine().forEach((o) => chart.current?.removeOverlay({ id: o.id }))}
         />
         <div ref={el} className="h-full min-w-0 flex-1" />
@@ -280,7 +434,6 @@ export function NepseTradingChart({
     </div>
   );
 }
-
 
 function dark() {
   return document.documentElement.classList.contains("dark");
