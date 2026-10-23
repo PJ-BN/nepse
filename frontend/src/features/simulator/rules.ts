@@ -4,13 +4,16 @@ export type Combinator = "and" | "or";
 
 /** Indicator name -> parameter names with defaults (the server validates bounds). */
 export const INDICATORS: Record<string, Record<string, number>> = {
+  open: {},
+  high: {},
+  low: {},
   close: {},
   volume: {},
   sma: { n: 20 },
   ema: { n: 20 },
   rsi: { n: 14 },
   atr: { n: 14 },
-  roc: { n: 10 },
+  roc: { n: 12 },
   highest: { n: 20 },
   lowest: { n: 20 },
   volume_sma: { n: 20 },
@@ -18,14 +21,14 @@ export const INDICATORS: Record<string, Record<string, number>> = {
   "macd.line": { fast: 12, slow: 26, signal: 9 },
   "macd.signal": { fast: 12, slow: 26, signal: 9 },
   "macd.hist": { fast: 12, slow: 26, signal: 9 },
-  "bollinger.mid": { n: 20, k: 2 },
-  "bollinger.upper": { n: 20, k: 2 },
-  "bollinger.lower": { n: 20, k: 2 },
+  "bb.mid": { n: 20, k: 2 },
+  "bb.upper": { n: 20, k: 2 },
+  "bb.lower": { n: 20, k: 2 },
   "stoch.k": { k: 14, d: 3 },
   "stoch.d": { k: 14, d: 3 },
-  adx: { n: 14 },
-  plus_di: { n: 14 },
-  minus_di: { n: 14 },
+  "adx.adx": { n: 14 },
+  "adx.plus_di": { n: 14 },
+  "adx.minus_di": { n: 14 },
 };
 
 export const OPERATORS = ["<", "<=", ">", ">=", "crosses_above", "crosses_below"] as const;

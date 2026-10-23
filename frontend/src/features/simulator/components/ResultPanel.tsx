@@ -12,7 +12,8 @@ function Badge({ ok, children }: { ok: boolean | null; children: React.ReactNode
   return <span className={`rounded px-2 py-0.5 text-xs font-medium ${cls}`}>{children}</span>;
 }
 
-const bracketLabel = (b: Bracket | null) => (b === null ? "–" : b === "neither" ? "neither hit" : `${b} hit`);
+const bracketLabel = (b: Bracket | null) =>
+  b === null ? "–" : b.outcome === "neither" ? "neither hit" : b.outcome === "open" ? "still open" : `${b.outcome} hit after ${b.bars} bars (${pct(b.ret)})`;
 
 function ForwardTable({ results }: { results: HorizonResult[] }) {
   return (
@@ -24,10 +25,10 @@ function ForwardTable({ results }: { results: HorizonResult[] }) {
         {results.map((r) => (
           <tr key={r.horizon} className="border-t">
             <td>{r.horizon} bars</td>
-            <td className={tone(r.return_pct)}>{pct(r.return_pct)}</td>
-            <td>{pct(r.mfe_pct)}</td>
-            <td>{pct(r.mae_pct)}</td>
-            <td><Badge ok={r.return_pct == null ? null : r.return_pct > 0}>{r.return_pct == null ? "no data" : r.return_pct > 0 ? "hit" : "miss"}</Badge></td>
+            <td className={tone(r.ret)}>{pct(r.ret)}</td>
+            <td>{pct(r.mfe)}</td>
+            <td>{pct(r.mae)}</td>
+            <td><Badge ok={r.ret == null ? null : r.ret > 0}>{r.ret == null ? "no data" : r.ret > 0 ? "hit" : "miss"}</Badge></td>
           </tr>
         ))}
       </tbody>
@@ -37,7 +38,7 @@ function ForwardTable({ results }: { results: HorizonResult[] }) {
 
 export function ResultPanel({ result, showForward }: { result: SimulationResult; showForward: boolean }) {
   const { anchor, forward, events, stats, warnings } = result;
-  const low = stats.count < LOW_SAMPLE;
+  const low = stats.events < LOW_SAMPLE;
   return (
     <div className="space-y-5 text-sm">
       {warnings.length > 0 && (
@@ -47,15 +48,17 @@ export function ResultPanel({ result, showForward }: { result: SimulationResult;
       )}
 
       <section className="space-y-2">
-        <h2 className="font-semibold">At the anchor · {anchor.date}</h2>
+        <h2 className="font-semibold">At the anchor · {anchor.date}{anchor.requested_date !== anchor.date && ` (last bar on or before ${anchor.requested_date})`}</h2>
         <p>
           <Badge ok={anchor.fired}>{anchor.fired ? "signal fired" : "signal did not fire"}</Badge>
         </p>
         <ul className="space-y-1">
           {anchor.conditions.map((c) => (
-            <li key={c.label} className="flex items-center gap-2">
-              <Badge ok={c.value}>{c.value ? "true" : "false"}</Badge>
-              <span className="font-mono text-xs">{c.label}</span>
+            <li key={`${c.left} ${c.op} ${c.right}`} className="flex items-center gap-2">
+              <Badge ok={c.met}>{c.met ? "true" : "false"}</Badge>
+              <span className="font-mono text-xs">
+                {c.left} {c.op.replace("_", " ")} {c.right} <span className="text-gray-500">({c.left_value?.toFixed(2) ?? "–"} vs {c.right_value?.toFixed(2) ?? "–"})</span>
+              </span>
             </li>
           ))}
         </ul>
@@ -71,7 +74,7 @@ export function ResultPanel({ result, showForward }: { result: SimulationResult;
 
       <section className="space-y-2">
         <h2 className="font-semibold">What happened next</h2>
-        {showForward ? (
+        {showForward && forward ? (
           <>
             <p className="text-xs text-gray-500">
               Entry {forward.entry_price == null ? "–" : forward.entry_price.toFixed(2)} at the close of {forward.entry_date ?? "–"} (the bar after the anchor). Bracket: {bracketLabel(forward.bracket)}.
@@ -79,7 +82,7 @@ export function ResultPanel({ result, showForward }: { result: SimulationResult;
             <ForwardTable results={forward.results} />
           </>
         ) : (
-          <p className="text-gray-500">Hidden until you reveal at least one future bar, so you can call it first.</p>
+          <p className="text-gray-500">{showForward ? "No bars after the anchor, so there is nothing to test." : "Hidden until you reveal at least one future bar, so you can call it first."}</p>
         )}
       </section>
 
@@ -87,15 +90,15 @@ export function ResultPanel({ result, showForward }: { result: SimulationResult;
         <h2 className="font-semibold">Track record before the anchor</h2>
         {low && (
           <p className="rounded border border-amber-400 bg-amber-50 p-2 text-amber-900">
-            Only {stats.count} earlier signal{stats.count === 1 ? "" : "s"} (under {LOW_SAMPLE}): these rates are anecdotes, not evidence.
+            Only {stats.events} earlier signal{stats.events === 1 ? "" : "s"} (under {LOW_SAMPLE}): these rates are anecdotes, not evidence.
           </p>
         )}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {stats.horizons.map((h) => (
             <div key={h.horizon} className="rounded border p-3">
-              <div className="text-xs text-gray-500">{h.horizon} bars · n={h.n}</div>
+              <div className="text-xs text-gray-500">{h.horizon} bars · n={h.count}</div>
               <div className="text-lg font-semibold">{h.win_rate == null ? "–" : `${(h.win_rate * 100).toFixed(0)}% win`}</div>
-              <div className="text-xs">avg {pct(h.avg_return_pct)} · median {pct(h.median_return_pct)}</div>
+              <div className="text-xs">avg {pct(h.avg_return)} · median {pct(h.median_return)}</div>
             </div>
           ))}
         </div>
@@ -113,7 +116,7 @@ export function ResultPanel({ result, showForward }: { result: SimulationResult;
                 {events.map((e) => (
                   <tr key={e.date} className="border-t">
                     <td className="font-mono text-xs">{e.date}</td>
-                    {e.results.map((r) => <td key={r.horizon} className={tone(r.return_pct)}>{pct(r.return_pct)}</td>)}
+                    {e.results.map((r) => <td key={r.horizon} className={tone(r.ret)}>{pct(r.ret)}</td>)}
                     <td>{bracketLabel(e.bracket)}</td>
                   </tr>
                 ))}
