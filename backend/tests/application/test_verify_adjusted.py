@@ -1,26 +1,36 @@
-from datetime import date
+from datetime import date, timedelta
 
 from nepse.application.charting.ports import Bar
 from nepse.application.charting.verify_adjusted import verify_adjusted
 
+DAYS = [date(2026, 1, 1) + timedelta(days=i) for i in range(30)]
+RAW = [100.0 + i for i in range(30)]
+STEP = 15  # our adj_factor steps 0.5 -> 1.0 at DAYS[15]
+
 
 class Repo:
     async def bars(self, symbol, start, end):
-        return [Bar(date(2026, 1, 1), 0, 0, 0, 100, 1, 0.9), Bar(date(2026, 1, 2), 0, 0, 0, 100, 1, 0.9),
-                Bar(date(2026, 1, 5), 0, 0, 0, 100, 1, 1.0)]
+        return [Bar(d, 0, 0, 0, c, 1, 0.5 if i < STEP else 1.0) for i, (d, c) in enumerate(zip(DAYS, RAW))]
 
 
 class Ref:
     async def adjusted_closes(self, symbol, start, end):
         if symbol == "BAD":
             raise RuntimeError("blocked")
-        return {date(2026, 1, 1): 90.0, date(2026, 1, 2): 91.0, date(2026, 1, 9): 5.0}  # 01-05 missing, 01-09 not ours
+        if symbol == "IGNORES":  # reference skipped the adjustment entirely
+            return dict(zip(DAYS, RAW))
+        if symbol == "SCALED":  # not a plain adjustment (returns damped) but the factor jump agrees
+            return {d: (c * 0.5 if i < STEP else c) * 0.9 for i, (d, c) in enumerate(zip(DAYS, RAW))}
+        shift = 2 if symbol == "LATE" else 0  # steps a couple of days off ours
+        return {d: c * (0.5 if i < STEP + shift else 1.0) for i, (d, c) in enumerate(zip(DAYS, RAW))}
 
 
-async def test_deviation_report_and_failure_isolation():
-    reports = await verify_adjusted(Repo(), Ref(), ["BAD", "NABIL"], date(2026, 1, 1), date(2026, 1, 31), 0.5)
-    assert [r.symbol for r in reports] == ["NABIL"]
-    r = reports[0]
-    assert r.compared == 2
-    assert round(r.max_pct, 2) == 1.10 and round(r.mean_pct, 2) == 0.55
-    assert [b.trade_date for b in r.breaches] == [date(2026, 1, 2)]
+async def test_factor_jump_decides_warning_and_failures_are_isolated():
+    syms = ["BAD", "NABIL", "LATE", "IGNORES", "SCALED"]
+    reports = {r.symbol: r for r in await verify_adjusted(Repo(), Ref(), syms, DAYS[0], DAYS[-1], 0.5)}
+    assert set(reports) == {"NABIL", "LATE", "IGNORES", "SCALED"}
+    assert not reports["NABIL"].breaches and reports["NABIL"].max_pct == 0
+    assert not reports["LATE"].breaches  # window absorbs a step a few days off
+    assert [b.trade_date for b in reports["IGNORES"].breaches] == [DAYS[STEP]]
+    assert round(reports["IGNORES"].breaches[0].reference, 3) == 1.0 and round(reports["IGNORES"].breaches[0].ours, 3) == 2.0
+    assert reports["SCALED"].max_pct > 0.5  # level differs, kept as a diagnostic only
