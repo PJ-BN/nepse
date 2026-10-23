@@ -100,3 +100,11 @@ async def test_ingest_navs_stores_known_symbols_only():
             return [("NIBLPF", nav), ("GHOST", nav)]
 
     assert await ingest_navs(Navs(), repo) == 1 and list(stored) == [1]
+
+
+async def test_ingest_all_skips_non_equity():
+    repo = FakeFundRepo()
+    fund = await repo.create_company("NIBLPF", "Fund", None)
+    fund.instrument_type = "MUTUAL_FUND"
+    failed = await ingest_all(["NIBLPF", "NABIL"], repo, [Source(fail={"NIBLPF"})])
+    assert failed == {} and "NABIL" in repo.companies

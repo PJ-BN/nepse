@@ -60,13 +60,13 @@ async def adjust(symbols: list[str] | None) -> int:
 
 
 async def verify_adjusted_job(repo: SqlIngestionRepository, symbols: list[str] | None = None) -> int:
-    """Weekly: compare our adjusted closes with NepseAlpha's (full backfilled history: factors accumulate backwards, so old dates carry every later adjustment); breaches are logged per symbol."""
+    """Weekly: compare our adjustment factors with NepseAlpha's at each action date (full backfilled history; levels and returns are diagnostics); disagreeing symbols are logged."""
     end = now_npt().date()
     async with SessionLocal() as session:
         reports = await verify_adjusted(SqlChartRepository(session), NepseAlphaClient(),
                                         symbols or await repo.active_symbols(), end - timedelta(days=3650), end)
-    for r in sorted(reports, key=lambda r: -r.max_pct)[:10]:
-        log.info("verify-adjusted worst: %s max=%.2f%% mean=%.3f%% breaches=%d", r.symbol, r.max_pct, r.mean_pct, len(r.breaches))
+    for r in sorted(reports, key=lambda r: (-len(r.breaches), -r.max_pct))[:10]:
+        log.info("verify-adjusted worst: %s max=%.2f%% mean=%.3f%% factor_mismatches=%d return_gap=%.2fpp", r.symbol, r.max_pct, r.mean_pct, len(r.breaches), r.max_return_diff_pp)
     return sum(bool(r.breaches) for r in reports)
 
 
