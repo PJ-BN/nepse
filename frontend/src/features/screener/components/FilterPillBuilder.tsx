@@ -15,7 +15,7 @@ function PillEditor({ pill, onChange, onRemove }: { pill: Pill; onChange: (p: Pi
   const kind = FIELDS[pill.field].kind;
   const canCompare = kind === "num" && pill.op !== "between" && pill.op !== "in";
   return (
-    <div className="flex flex-wrap items-center gap-1 rounded-full border bg-gray-50 px-3 py-1 dark:bg-gray-900">
+    <div className="flex flex-wrap items-center gap-1 rounded-full border bg-gray-50 px-3 py-1">
       <select
         aria-label="Field"
         className={input}
@@ -110,7 +110,7 @@ export function FilterPillBuilder({ pills, combinator, onChange }: Props) {
       ))}
       <button
         type="button"
-        className="rounded-full border border-dashed px-3 py-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+        className="rounded-full border border-dashed px-3 py-1 text-sm hover:bg-gray-100"
         onClick={() => onChange([...pills, newPill()], combinator)}
       >
         + condition

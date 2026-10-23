@@ -1,26 +1,216 @@
 @import "tailwindcss";
 
+/* Theme is class-driven (<html class="dark">); no class follows the OS preference. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f6f7fb;
+  --foreground: #14161f;
+  --surface: #ffffff;
+  --surface-2: #f1f3f9;
+  --hover: #eceff7;
+  --border: #e3e6ef;
+  --muted: #697088;
+  --accent: #4f46e5;
+  --accent-soft: #eef0ff;
+  --up: #0f9d58;
+  --down: #e5484d;
+  --warn: #d97706;
+  --shadow: 0 1px 2px rgb(20 22 40 / 0.04), 0 4px 16px rgb(20 22 40 / 0.05);
+  --glow-a: rgb(99 102 241 / 0.10);
+  --glow-b: rgb(16 185 129 / 0.07);
+  color-scheme: light;
+}
+
+:root.dark {
+  --background: #0b0d14;
+  --foreground: #e8eaf2;
+  --surface: #131622;
+  --surface-2: #181c2b;
+  --hover: #1d2234;
+  --border: #252a3d;
+  --muted: #8b93ad;
+  --accent: #8b8cff;
+  --accent-soft: #1d2040;
+  --up: #34d399;
+  --down: #fb7185;
+  --warn: #fbbf24;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 6px 24px rgb(0 0 0 / 0.35);
+  --glow-a: rgb(99 102 241 / 0.16);
+  --glow-b: rgb(16 185 129 / 0.07);
+  color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Remap the neutral + semantic palettes onto theme tokens so existing utility classes follow light/dark. */
+  --color-gray-50: var(--surface-2);
+  --color-gray-100: var(--hover);
+  --color-gray-200: var(--border);
+  --color-gray-300: var(--border);
+  --color-gray-500: var(--muted);
+  --color-gray-600: var(--muted);
+  --color-gray-700: var(--foreground);
+  --color-gray-800: var(--foreground);
+
+  --color-green-600: var(--up);
+  --color-green-500: var(--up);
+  --color-green-800: var(--up);
+  --color-green-100: color-mix(in srgb, var(--up) 14%, transparent);
+  --color-green-50: color-mix(in srgb, var(--up) 8%, transparent);
+  --color-green-300: color-mix(in srgb, var(--up) 40%, transparent);
+
+  --color-red-600: var(--down);
+  --color-red-500: var(--down);
+  --color-red-700: var(--down);
+  --color-red-800: var(--down);
+  --color-red-100: color-mix(in srgb, var(--down) 14%, transparent);
+  --color-red-50: color-mix(in srgb, var(--down) 8%, transparent);
+  --color-red-300: color-mix(in srgb, var(--down) 40%, transparent);
+
+  --color-amber-500: var(--warn);
+  --color-amber-400: var(--warn);
+  --color-amber-800: var(--warn);
+  --color-amber-900: var(--warn);
+  --color-amber-50: color-mix(in srgb, var(--warn) 10%, transparent);
+
+  --color-blue-600: var(--accent);
+  --color-blue-700: var(--accent);
+  --color-blue-50: var(--accent-soft);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background:
+      radial-gradient(60rem 30rem at 0% -10%, var(--glow-a), transparent 60%),
+      radial-gradient(50rem 28rem at 100% 0%, var(--glow-b), transparent 60%),
+      var(--background);
+    background-attachment: fixed;
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+  }
+  h1 {
+    letter-spacing: -0.02em;
+  }
+  a {
+    transition: color 0.15s;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  input,
+  select,
+  textarea {
+    background: var(--surface);
+    color: var(--foreground);
+    border-color: var(--border);
+    border-radius: 0.5rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input::placeholder {
+    color: var(--muted);
+    opacity: 0.7;
+  }
+  :focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    outline-offset: 1px;
+  }
+  thead th {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+  tbody tr {
+    transition: background-color 0.12s;
+  }
+  tbody tr:hover {
+    background: var(--hover);
+  }
+  ::-webkit-scrollbar {
+    height: 10px;
+    width: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Unlayered on purpose: these beat the `rounded` / `border` utilities to give panels a consistent look. */
+.rounded {
+  border-radius: 0.5rem;
+}
+:is(section, form, div, details).rounded.border {
+  border-radius: 0.875rem;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+button.rounded.border,
+button.rounded {
+  border-radius: 0.5rem;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.05s;
+}
+button.rounded:active {
+  transform: translateY(1px);
+}
+button.rounded.border {
+  background: var(--surface);
+}
+button.rounded.border:hover {
+  background: var(--hover);
+}
+button.bg-foreground,
+button.bg-foreground:hover {
+  background: var(--foreground);
+  font-weight: 500;
+}
+.bg-foreground {
+  background: var(--foreground);
+}
+.text-background {
+  color: var(--background);
+}
+.border-blue-600 {
+  border-color: var(--accent);
+}
+.bg-blue-50 {
+  background: var(--accent-soft) !important;
+}
+main {
+  animation: page-in 0.25s ease-out;
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  main {
+    animation: none;
+  }
 }

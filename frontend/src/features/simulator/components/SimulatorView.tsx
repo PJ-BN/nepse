@@ -111,12 +111,12 @@ export function SimulatorView({ initialSymbol }: { initialSymbol: string }) {
             />
             <span>{Math.min(revealed, future)} / {future} bars</span>
             {[1, 5, 10].map((n) => (
-              <button key={n} type="button" onClick={() => setRevealed((r) => Math.min(future, r + n))} className="rounded border px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800">
+              <button key={n} type="button" onClick={() => setRevealed((r) => Math.min(future, r + n))} className="rounded border px-2 py-1 hover:bg-gray-100">
                 +{n}
               </button>
             ))}
-            <button type="button" onClick={() => setRevealed(future)} className="rounded border px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800">All</button>
-            <button type="button" onClick={() => setRevealed(0)} className="rounded border px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800">Reset</button>
+            <button type="button" onClick={() => setRevealed(future)} className="rounded border px-2 py-1 hover:bg-gray-100">All</button>
+            <button type="button" onClick={() => setRevealed(0)} className="rounded border px-2 py-1 hover:bg-gray-100">Reset</button>
           </div>
           <p className="text-xs text-gray-500">Blue arrows: earlier signal firings. Round marker: the anchor bar{result.anchor.date !== anchor ? ` (${result.anchor.date}, the last bar on or before ${anchor})` : ""}.</p>
           <SimulatorChart result={result} revealed={revealed} />

@@ -11,7 +11,7 @@ function Table({ rows, cols }: { rows: DividendEvent[]; cols: ("div" | "right")[
   return (
     <div className="max-h-[32rem] overflow-auto">
       <table className="min-w-full text-sm">
-        <thead className="sticky top-0 bg-white dark:bg-black">
+        <thead className="sticky top-0 bg-background">
           <tr className="border-b text-left">
             <th className="px-2 py-1">Symbol</th>
             <th className="px-2 py-1">Company</th>
@@ -53,7 +53,7 @@ export function DividendsBoard() {
       <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
         {TABS.map((t, i) => (
           <button key={t} type="button" onClick={() => setTab(i)}
-                  className={`rounded border px-3 py-1 ${i === tab ? "border-blue-600 text-blue-700 dark:text-blue-300" : ""}`}>
+                  className={`rounded border px-3 py-1 ${i === tab ? "border-blue-600 text-blue-700" : ""}`}>
             {t}
           </button>
         ))}

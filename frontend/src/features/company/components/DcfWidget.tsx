@@ -23,7 +23,7 @@ export function DcfWidget({ symbol, initial }: { symbol: string; initial: { grow
   const field = (label: string, value: string, set: (v: string) => void) => (
     <label className="flex flex-col text-xs text-gray-500">
       {label}
-      <input type="number" step="0.5" value={value} onChange={(e) => set(e.target.value)} className="w-24 rounded border px-2 py-1 text-sm text-black" />
+      <input type="number" step="0.5" value={value} onChange={(e) => set(e.target.value)} className="w-24 rounded border px-2 py-1 text-sm" />
     </label>
   );
   return (

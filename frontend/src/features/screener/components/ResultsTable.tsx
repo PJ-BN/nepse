@@ -46,7 +46,7 @@ export function ResultsTable({ columns, rows, sort, onSort }: Props) {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.symbol} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900">
+            <tr key={r.symbol} className="border-b hover:bg-gray-50">
               {columns.map((c) => (
                 <td key={c} className={`whitespace-nowrap px-2 py-1 ${typeof r[c] === "number" ? "text-right tabular-nums" : ""}`}>
                   {format(c, r[c])}

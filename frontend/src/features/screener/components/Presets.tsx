@@ -15,7 +15,7 @@ export function Presets({ activeId, onPick }: { activeId: string | null; onPick:
           title={p.description}
           onClick={() => onPick(p)}
           className={`rounded border px-3 py-1 text-sm ${
-            activeId === p.id ? "border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+            activeId === p.id ? "border-blue-600 bg-blue-50 text-blue-700" : "hover:bg-gray-100"
           }`}
         >
           {p.name}
