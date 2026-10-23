@@ -20,8 +20,8 @@ const COLORS = ["#f59e0b", "#3b82f6", "#a855f7", "#14b8a6", "#ec4899", "#84cc16"
 
 type Built = { candles: ISeriesApi<"Candlestick">; lines: ISeriesApi<"Line">[]; markers: ReturnType<typeof createSeriesMarkers<Time>> };
 
-/** Oscillators that share a prefix (macd.line / macd.hist) share a pane; others get their own. */
-const paneGroup = (key: string) => key.split(".")[0];
+/** Oscillators that share a prefix (macd(12,26,9).line / .hist) share a pane; others get their own. */
+const paneGroup = (name: string) => name.split(/[.(]/)[0];
 
 /** Shows bars up to the anchor plus `revealed` bars of the future. */
 export function SimulatorChart({ result, revealed }: { result: SimulationResult; revealed: number }) {
@@ -30,7 +30,7 @@ export function SimulatorChart({ result, revealed }: { result: SimulationResult;
   const built = useRef<Built | null>(null);
 
   const anchorIdx = useMemo(() => result.bars.findIndex((b) => b.t === result.anchor.date), [result]);
-  const panes = useMemo(() => [...new Set(result.indicators.filter((i) => i.pane === "oscillator").map((i) => paneGroup(i.key)))], [result]);
+  const panes = useMemo(() => [...new Set(result.indicators.filter((i) => i.pane === "oscillator").map((i) => paneGroup(i.name)))], [result]);
 
   useEffect(() => {
     const c = createChart(el.current!, {
@@ -43,8 +43,8 @@ export function SimulatorChart({ result, revealed }: { result: SimulationResult;
     const lines = result.indicators.map((ind, i) =>
       c.addSeries(
         LineSeries,
-        { color: COLORS[i % COLORS.length], lineWidth: 1, priceLineVisible: false, lastValueVisible: false, title: ind.label },
-        ind.pane === "price" ? 0 : 1 + panes.indexOf(paneGroup(ind.key)),
+        { color: COLORS[i % COLORS.length], lineWidth: 1, priceLineVisible: false, lastValueVisible: false, title: ind.name },
+        ind.pane === "price" ? 0 : 1 + panes.indexOf(paneGroup(ind.name)),
       ),
     );
     panes.forEach((_, i) => c.panes()[1 + i]?.setHeight(110));
@@ -61,7 +61,7 @@ export function SimulatorChart({ result, revealed }: { result: SimulationResult;
     if (!b) return;
     const end = Math.min(result.bars.length, anchorIdx + 1 + revealed);
     const bars = result.bars.slice(0, end);
-    b.candles.setData(bars.map((x) => ({ time: x.t as Time, open: x.o, high: x.h, low: x.l, close: x.c })));
+    b.candles.setData(bars.flatMap((x) => (x.o == null || x.h == null || x.l == null || x.c == null ? [] : [{ time: x.t as Time, open: x.o, high: x.h, low: x.l, close: x.c }])));
     result.indicators.forEach((ind, i) =>
       b.lines[i].setData(bars.flatMap((x, j) => (ind.values[j] == null ? [] : [{ time: x.t as Time, value: ind.values[j] as number }]))),
     );
