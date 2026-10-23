@@ -96,3 +96,88 @@ def rsi_bullish_divergence(closes: Sequence[float], n: int = 14, window: int = 1
 
     recent, prior = low(len(closes) - window, len(closes)), low(len(closes) - 2 * window, len(closes) - window)
     return closes[recent] < closes[prior] and r[recent] > r[prior]  # type: ignore[operator]
+
+
+def _on_defined(series: Series, fn) -> Series:
+    """Apply `fn` (a values -> Series indicator) to the defined tail of `series`, keeping the None warm-up prefix."""
+    start = next((i for i, v in enumerate(series) if v is not None), len(series))
+    return [None] * start + fn(series[start:])
+
+
+def macd(closes: Sequence[float], fast: int = 12, slow: int = 26, signal: int = 9) -> tuple[Series, Series, Series]:
+    """(line, signal, histogram): line = EMA(fast) - EMA(slow), signal = EMA of the line."""
+    ef, es = ema(closes, fast), ema(closes, slow)
+    line: Series = [None if a is None or b is None else a - b for a, b in zip(ef, es)]
+    sig = _on_defined(line, lambda tail: ema(tail, signal))
+    hist: Series = [None if a is None or b is None else a - b for a, b in zip(line, sig)]
+    return line, sig, hist
+
+
+def bollinger(closes: Sequence[float], n: int = 20, k: float = 2.0) -> tuple[Series, Series, Series]:
+    """(mid, upper, lower): SMA(n) +/- k population standard deviations."""
+    mid = sma(closes, n)
+    upper: Series = [None] * len(closes)
+    lower: Series = [None] * len(closes)
+    for i, m in enumerate(mid):
+        if m is None:
+            continue
+        sd = (sum((v - m) ** 2 for v in closes[i - n + 1:i + 1]) / n) ** 0.5
+        upper[i], lower[i] = m + k * sd, m - k * sd
+    return mid, upper, lower
+
+
+def highest(values: Sequence[float], n: int) -> Series:
+    return [None if i < n - 1 else max(values[i - n + 1:i + 1]) for i in range(len(values))]
+
+
+def lowest(values: Sequence[float], n: int) -> Series:
+    return [None if i < n - 1 else min(values[i - n + 1:i + 1]) for i in range(len(values))]
+
+
+def stochastic(highs: Sequence[float], lows: Sequence[float], closes: Sequence[float], k: int = 14,
+               d: int = 3) -> tuple[Series, Series]:
+    """(%K, %D): %K = where the close sits in the k-bar range (50 when the range is flat), %D = SMA(d) of %K."""
+    hh, ll = highest(highs, k), lowest(lows, k)
+    pk: Series = [None if h is None or lo is None else 50.0 if h == lo else 100 * (c - lo) / (h - lo)
+                  for h, lo, c in zip(hh, ll, closes)]
+    return pk, _on_defined(pk, lambda tail: sma(tail, d))
+
+
+def adx(highs: Sequence[float], lows: Sequence[float], closes: Sequence[float],
+        n: int = 14) -> tuple[Series, Series, Series]:
+    """Wilder ADX with +DI and -DI. DI starts at bar n, ADX at bar 2n-1."""
+    size = len(closes)
+    adx_out: Series = [None] * size
+    plus_out: Series = [None] * size
+    minus_out: Series = [None] * size
+    if size <= n:
+        return adx_out, plus_out, minus_out
+    up = [highs[i] - highs[i - 1] for i in range(1, size)]
+    down = [lows[i - 1] - lows[i] for i in range(1, size)]
+    plus_dm = [u if u > d and u > 0 else 0.0 for u, d in zip(up, down)]
+    minus_dm = [d if d > u and d > 0 else 0.0 for u, d in zip(up, down)]
+    tr = _smooth(true_range(highs, lows, closes)[1:], n, True)
+    pdm, mdm = _smooth(plus_dm, n, True), _smooth(minus_dm, n, True)
+    dx: list[float] = []
+    for j, (t, p, m) in enumerate(zip(tr, pdm, mdm)):
+        if t is None or p is None or m is None:
+            continue
+        pi, mi = (100 * p / t, 100 * m / t) if t else (0.0, 0.0)
+        plus_out[j + 1], minus_out[j + 1] = pi, mi
+        dx.append(0.0 if pi + mi == 0 else 100 * abs(pi - mi) / (pi + mi))
+    for j, v in enumerate(_smooth(dx, n, True)):
+        adx_out[n + j] = v  # dx[0] belongs to bar n
+    return adx_out, plus_out, minus_out
+
+
+def roc(closes: Sequence[float], n: int = 12) -> Series:
+    """Rate of change in percent over n bars."""
+    return [None if i < n or not closes[i - n] else 100 * (closes[i] / closes[i - n] - 1) for i in range(len(closes))]
+
+
+def obv(closes: Sequence[float], volumes: Sequence[float]) -> list[float]:
+    out = [0.0] * len(closes)
+    for i in range(1, len(closes)):
+        step = volumes[i] if closes[i] > closes[i - 1] else -volumes[i] if closes[i] < closes[i - 1] else 0.0
+        out[i] = out[i - 1] + step
+    return out
