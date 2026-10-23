@@ -5,8 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from nepse.application.charting.ports import Bar, IntradayBar, SymbolInfo
 from nepse.domain.corporate_actions.adjustment import CorporateAction
+from nepse.domain.market.indices import ALL_INDICES, SECTORS
 
 _SYMBOL = "SELECT c.symbol, c.name, s.code AS sector FROM companies c LEFT JOIN sectors s ON s.id = c.sector_id"
+
+
+def _index_info(code: str) -> SymbolInfo:
+    name = next((n for n, idx in SECTORS.values() if idx == code), code)
+    return SymbolInfo(code, f"{name} Index" if name != code else f"{code} Index", None)
 
 
 class SqlChartRepository:
@@ -14,6 +20,17 @@ class SqlChartRepository:
         self.s = session
 
     async def bars(self, symbol: str, start: date, end: date) -> list[Bar]:
+        if symbol in ALL_INDICES:
+            rows = await self.s.execute(text("""
+                SELECT trade_date, coalesce(open, close) AS open, coalesce(high, close) AS high,
+                       coalesce(low, close) AS low, close, coalesce(turnover, 0) AS volume
+                FROM index_daily
+                WHERE index_code = :symbol AND trade_date BETWEEN :start AND :end AND close IS NOT NULL
+                ORDER BY trade_date"""), {"symbol": symbol, "start": start, "end": end})
+            return [  # index "volume" is turnover
+                Bar(r.trade_date, float(r.open), float(r.high), float(r.low), float(r.close), int(r.volume))
+                for r in rows
+            ]
         rows = await self.s.execute(text("""
             SELECT o.trade_date, coalesce(o.open, o.prev_close, o.close) AS open,  -- NEPSE history has no open
                    coalesce(o.high, o.close) AS high, coalesce(o.low, o.close) AS low,
@@ -43,11 +60,18 @@ class SqlChartRepository:
         ]
 
     async def last_date_before(self, symbol: str, d: date) -> date | None:
+        if symbol in ALL_INDICES:
+            return await self.s.scalar(
+                text("SELECT max(trade_date) FROM index_daily WHERE index_code = :symbol AND trade_date < :d"),
+                {"symbol": symbol, "d": d},
+            )
         return await self.s.scalar(text("""
             SELECT max(o.trade_date) FROM ohlcv_daily o JOIN companies c ON c.id = o.company_id
             WHERE c.symbol = :symbol AND o.trade_date < :d"""), {"symbol": symbol, "d": d})
 
     async def find_symbol(self, symbol: str) -> SymbolInfo | None:
+        if symbol in ALL_INDICES:
+            return _index_info(symbol)
         r = (await self.s.execute(text(f"{_SYMBOL} WHERE c.symbol = :symbol"), {"symbol": symbol})).first()
         return SymbolInfo(r.symbol, r.name, r.sector) if r else None
 
@@ -56,7 +80,9 @@ class SqlChartRepository:
             {_SYMBOL} WHERE c.status = 'ACTIVE' AND (c.symbol ILIKE :prefix OR c.name ILIKE :anywhere)
             ORDER BY c.symbol NOT ILIKE :prefix, c.symbol LIMIT :limit"""),
             {"prefix": f"{query}%", "anywhere": f"%{query}%", "limit": limit})
-        return [SymbolInfo(r.symbol, r.name, r.sector) for r in rows]
+        q = query.upper()
+        idx = [_index_info(c) for c in ALL_INDICES if q in c or q in _index_info(c).name.upper()]
+        return (idx + [SymbolInfo(r.symbol, r.name, r.sector) for r in rows])[:limit]
 
 
 class SqlAdjustmentRepository:

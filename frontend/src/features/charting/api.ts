@@ -1,5 +1,5 @@
 import { getJson } from "@/shared/api/http";
-import type { Candle, Resolution, UdfHistory, UdfSearchItem } from "./types";
+import { isIntraday, type Candle, type Resolution, type UdfHistory, type UdfSearchItem } from "./types";
 
 // Client for the backend's TradingView UDF endpoints (/api/v1/udf/*).
 const UDF = "/api/v1/udf";
@@ -17,7 +17,7 @@ export async function fetchHistory(
   const h = await getJson<UdfHistory>(`${UDF}/history?${q}`);
   if (h.s === "error") throw new Error(h.errmsg);
   if (h.s !== "ok") return [];
-  const shift = resolution === "1D" ? 0 : NPT_OFFSET;
+  const shift = isIntraday(resolution) ? NPT_OFFSET : 0;
   return h.t.map((time, i) => ({ time: time + shift, open: h.o[i], high: h.h[i], low: h.l[i], close: h.c[i], volume: h.v[i] }));
 }
 

@@ -6,12 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from nepse.application.charting.get_history import INTRADAY, get_history, get_intraday_history
 from nepse.application.charting.ports import SymbolInfo
+from nepse.domain.market.indices import ALL_INDICES
 from nepse.infrastructure.db.repositories.charting import SqlChartRepository
 from nepse.infrastructure.db.session import SessionLocal
 
 router = APIRouter(prefix="/api/v1/udf", tags=["udf"])
 
-RESOLUTIONS = [*INTRADAY, "1D"]
+DAILY_BASED = ("1D", "1W", "1M")
+RESOLUTIONS = [*INTRADAY, *DAILY_BASED]
 
 
 async def chart_repo() -> AsyncIterator[SqlChartRepository]:
@@ -21,7 +23,7 @@ async def chart_repo() -> AsyncIterator[SqlChartRepository]:
 
 def _search_item(s: SymbolInfo) -> dict:
     return {"symbol": s.symbol, "full_name": s.symbol, "description": s.name, "exchange": "NEPSE",
-            "ticker": s.symbol, "type": "stock"}
+            "ticker": s.symbol, "type": "index" if s.symbol in ALL_INDICES else "stock"}
 
 
 @router.get("/config")
@@ -75,7 +77,8 @@ async def history(
         return await get_intraday_history(
             repo, symbol, datetime.fromtimestamp(from_, UTC), datetime.fromtimestamp(to, UTC), res
         )
-    if res not in ("1D", "D"):
+    res = {"D": "1D", "W": "1W", "M": "1M"}.get(res, res)
+    if res not in DAILY_BASED:
         return {"s": "error", "errmsg": f"unsupported resolution {resolution}"}
     start, end = (datetime.fromtimestamp(t, UTC).date() for t in (from_, to))
-    return await get_history(repo, symbol, start, end, adjusted)
+    return await get_history(repo, symbol, start, end, adjusted, res)
