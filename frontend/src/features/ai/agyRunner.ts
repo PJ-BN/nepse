@@ -1,5 +1,6 @@
 import { execFile } from "child_process";
-import type { ChartAiAnalysis, ChartAiDrawing, ChartAiIndicator, CompanyAiEvaluation, MarketAiAnalysis } from "./types";
+import type { ChartAiAnalysis, ChartAiArticle, ChartQuant, CompanyAiEvaluation, MarketAiAnalysis } from "./types";
+import { computeChartQuant, deriveCall, quantDrawings, quantIndicators, quantNarrative } from "./chartQuant";
 
 function cleanJson(raw: string): string {
   let cleaned = raw.trim();
@@ -279,6 +280,36 @@ Respond with ONLY a raw JSON object (strictly valid JSON, no markdown backticks,
   }
 }
 
+const STANCES: ChartAiAnalysis["stance"][] = ["STRONG BULLISH", "BULLISH BREAKOUT", "BULLISH", "NEUTRAL / ACCUMULATION", "BEARISH", "REVERSAL WATCH"];
+const ACTIONS: ChartAiAnalysis["action"][] = ["BUY ON PULLBACK", "BUY BREAKOUT", "HOLD / ACCUMULATE", "TAKE PROFIT", "WAIT / AVOID"];
+const STANCE_ACTION_CONFLICT = (s: string, a: string) => (s === "BEARISH" && a !== "WAIT / AVOID") || (s.includes("BULLISH") && a === "WAIT / AVOID");
+
+// Deterministic quant engine builds every number and drawing; the LLM only supplies the professional narrative on top.
+function buildChartAnalysis(upper: string, timeframe: string, bars: CandleRecord[], q: ChartQuant, source: "agy" | "heuristic"): ChartAiAnalysis {
+  const call = deriveCall(q);
+  const pct = (t: number) => Math.round(((t - q.last_close) / q.last_close) * 1000) / 10;
+  return {
+    symbol: upper,
+    timeframe,
+    title: `${upper} ${timeframe}: ${q.regime.label.toLowerCase().replace(/^./, (c) => c.toUpperCase())}, ${q.score >= 0 ? "+" : ""}${q.score} confluence`,
+    ...call,
+    entry_zone: { min: q.plan.entry_min, max: q.plan.entry_max },
+    targets: q.plan.targets.map((price, i) => ({
+      label: ["Target 1 (nearest supply)", "Target 2 (next supply / measured move)", "Target 3 (Fibonacci extension / runner)"][i],
+      price,
+      upside_pct: pct(price),
+    })),
+    stop_loss: { price: q.plan.stop, risk_pct: q.plan.risk_pct },
+    risk_reward_ratio: `1:${q.plan.rr[1]}`,
+    recommended_indicators: quantIndicators(q),
+    recommended_drawings: quantDrawings(bars, q),
+    article: quantNarrative(upper, timeframe, q),
+    quant: q,
+    evaluated_at: new Date().toISOString(),
+    source,
+  };
+}
+
 export async function evaluateChartWithAgy(
   symbol: string,
   candles: CandleRecord[],
@@ -295,365 +326,105 @@ export async function evaluateChartWithAgy(
     }
   }
 
-  if (!candles || candles.length < 5) {
-    return generateChartHeuristic(upper, candles, timeframe);
-  }
+  const q = computeChartQuant(candles ?? []);
+  if (!q) throw new Error("Not enough price history for technical analysis (need 30+ bars).");
+  const base = buildChartAnalysis(upper, timeframe, candles, q, "heuristic");
 
-  const { swingHighs, swingLows } = extractSwingPoints(candles);
-  const snap = computeTechnicalSnapshots(candles);
+  const pack = {
+    symbol: upper,
+    timeframe,
+    last_close: q.last_close,
+    confluence_score: q.score,
+    regime: q.regime,
+    structure: q.structure,
+    momentum: q.momentum,
+    volatility: q.volatility,
+    volume: q.volume,
+    support_resistance: q.levels,
+    fibonacci: q.fib,
+    candle_patterns: q.patterns,
+    higher_timeframes: q.mtf,
+    range_52w: q.range,
+    signals: q.signals,
+    trade_plan: q.plan,
+    scenarios: q.scenarios,
+    model_call: { stance: base.stance, action: base.action, confidence_score: base.confidence_score },
+  };
 
-  const recentLowsStr = swingLows
-    .slice(-3)
-    .map((l) => `NPR ${l.price.toFixed(1)} (${l.dateStr}, ts: ${l.timestamp})`)
-    .join(", ");
-  const recentHighsStr = swingHighs
-    .slice(-3)
-    .map((h) => `NPR ${h.price.toFixed(1)} (${h.dateStr}, ts: ${h.timestamp})`)
-    .join(", ");
+  const prompt = `You are the head of technical research at an institutional desk covering NEPSE (Nepal Stock Exchange: ±10% daily circuit, T+2 settlement, retail-dominated flows, no practical shorting).
+A quantitative engine has already computed everything below from ${q.bars} bars of ${upper} ${timeframe} data. Write the research note a senior CMT would publish.
 
-  const prompt = `You are an elite Chartered Market Technician (CMT) and quantitative price-action analyst specializing in NEPSE (Nepal Stock Exchange).
-Perform a comprehensive technical analysis for ${upper} on the ${timeframe} timeframe based on these exact chart candle metrics:
-- Current Close: NPR ${snap.lastClose.toFixed(2)}
-- 20 EMA: NPR ${snap.ema20.toFixed(2)}
-- 50 SMA: NPR ${snap.sma50.toFixed(2)}
-- RSI (14): ${snap.rsi14.toFixed(1)}
-- Latest Volume: ${snap.lastVol.toLocaleString()} shares vs 20-period Average Volume: ${Math.round(snap.avgVol).toLocaleString()} shares
-- Recent Swing Highs: ${recentHighsStr || "N/A"}
-- Recent Swing Lows: ${recentLowsStr || "N/A"}
+QUANT PACK (authoritative; never invent or alter numbers, cite them):
+${JSON.stringify(pack)}
 
-CRITICAL REQUIREMENTS:
-1. Determine Technical Stance, Actionable Trade Setup (Entry zone min-max, Targets T1 and T2, Hard Stop Loss, Risk-to-Reward ratio).
-2. Recommend Best Indicators to plot (e.g. EMA, Supertrend, RSI, Bollinger Bands, ATR) with clear rationale.
-3. Recommend Exact Drawing Tools to apply directly on the chart canvas:
-   - Primary Trendline (segment) using actual swing timestamps and values.
-   - Horizontal Resistance and Support levels (horizontalStraightLine).
-   - Demand/Accumulation Zone box (rect).
-4. Author a detailed 3-part technical research article below the chart:
-   - Part 1: Why these specific indicators and drawing tools were chosen.
-   - Part 2: What does this chart say (detailed price action, volume profile, candle patterns, trend phase).
-   - Part 3: What to do with this (step-by-step actionable trade plan, invalidation rules, risk controls).
+WRITING RULES:
+- Be specific: reference exact levels, touch counts, ADX, RSI, relative volume, value area, POC, Fibonacci levels, higher-timeframe trend.
+- Explicitly discuss where signals CONFLICT (e.g. strong trend but overbought, bullish structure but weak volume) and what that means for odds.
+- State what would change your mind (invalidation) and the trigger that upgrades conviction.
+- Use the supplied trade_plan and scenarios as-is. Do not change prices. You may change stance/action/confidence only if you justify it in the note; keep them consistent with each other.
+- No generic filler, no disclaimers, no repeating the same fact in several sections. 3-5 dense sentences per section.
 
-Respond with ONLY a raw JSON object (strictly valid JSON, no markdown backticks, no explanations outside JSON):
+Respond with ONLY a raw JSON object (valid JSON, no markdown fences):
 {
-  "symbol": "${upper}",
-  "timeframe": "${timeframe}",
-  "title": "Concise high-impact technical analysis headline",
+  "title": "sharp, specific headline with a thesis (not generic)",
   "stance": "STRONG BULLISH" | "BULLISH BREAKOUT" | "BULLISH" | "NEUTRAL / ACCUMULATION" | "BEARISH" | "REVERSAL WATCH",
-  "confidence_score": number (0-100),
   "action": "BUY ON PULLBACK" | "BUY BREAKOUT" | "HOLD / ACCUMULATE" | "TAKE PROFIT" | "WAIT / AVOID",
-  "entry_zone": { "min": number, "max": number },
-  "targets": [
-    { "label": "Target 1 (Intermediate)", "price": number, "upside_pct": number },
-    { "label": "Target 2 (Extended)", "price": number, "upside_pct": number }
-  ],
-  "stop_loss": { "price": number, "risk_pct": number },
-  "risk_reward_ratio": "1:2.8",
-  "recommended_indicators": [
-    { "type": "ema", "period": 20, "color": "#3b82f6", "reason": "Dynamic momentum and trailing support" },
-    { "type": "supertrend", "period": 10, "color": "#10b981", "reason": "Regime filter and trailing stop" },
-    { "type": "rsi", "period": 14, "color": "#8b5cf6", "reason": "Momentum oscillator tracking overbought/oversold momentum" }
-  ],
-  "recommended_drawings": [
-    {
-      "name": "segment",
-      "label": "Ascending Support Trendline",
-      "points": [{ "timestamp": number, "value": number }, { "timestamp": number, "value": number }],
-      "color": "#16a34a",
-      "reason": "Anchors higher structural swing lows defining primary trend vector"
-    },
-    {
-      "name": "horizontalStraightLine",
-      "label": "Overhead Major Resistance",
-      "points": [{ "timestamp": number, "value": number }],
-      "color": "#dc2626",
-      "reason": "Previous swing peak where selling supply concentrated"
-    },
-    {
-      "name": "horizontalStraightLine",
-      "label": "Key Structural Support Level",
-      "points": [{ "timestamp": number, "value": number }],
-      "color": "#2563eb",
-      "reason": "Structural pivot floor defending upward continuation"
-    },
-    {
-      "name": "rect",
-      "label": "Demand & Consolidation Zone",
-      "points": [{ "timestamp": number, "value": number }, { "timestamp": number, "value": number }],
-      "color": "#10b981",
-      "reason": "Price pocket where institutional accumulation absorbs floating supply"
-    }
-  ],
+  "confidence_score": number,
   "article": {
-    "why_tools_used": "Multi-paragraph explanation of why each indicator and drawing tool was chosen...",
-    "what_chart_says": "Multi-paragraph breakdown of price action, volume expansion, and market structure...",
-    "what_to_do": "Multi-paragraph actionable trade execution plan and risk management...",
-    "risk_factors": ["string", "string"]
+    "executive_summary": "the thesis, edge, and key conflict in one paragraph",
+    "market_structure": "swing structure, BOS/CHoCH, trend phase, key S/R and why they matter",
+    "momentum_volatility": "RSI/MACD/ADX/divergence, ATR regime, squeeze, expected move",
+    "volume_analysis": "volume profile, value area/POC acceptance, OBV flow, candle evidence",
+    "multi_timeframe": "weekly/monthly alignment and implication for position sizing",
+    "why_tools_used": "why this indicator/level toolkit fits the current regime",
+    "what_chart_says": "synthesis of the three most important facts",
+    "what_to_do": "numbered execution plan: entry, scaling, targets, stop, trailing, sizing, with if/then rules",
+    "risk_factors": ["specific risk 1", "specific risk 2", "specific risk 3"]
   }
 }`;
 
   try {
-    const rawOut = await runAgyPrompt(prompt, 60000);
-    const cleaned = cleanJson(rawOut);
-    const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+    const rawOut = await runAgyPrompt(prompt, 120000);
+    const parsed = JSON.parse(cleanJson(rawOut)) as Record<string, unknown>;
+    const art = (parsed.article || {}) as Record<string, unknown>;
+    const str = (k: Exclude<keyof ChartAiArticle, "risk_factors">): string =>
+      typeof art[k] === "string" && (art[k] as string).trim().length > 20 ? (art[k] as string) : base.article[k] ?? "";
 
-    const entryZone = (parsed.entry_zone || {}) as Record<string, unknown>;
-    const stopLoss = (parsed.stop_loss || {}) as Record<string, unknown>;
-    const article = (parsed.article || {}) as Record<string, unknown>;
+    const stance = STANCES.includes(parsed.stance as never) ? (parsed.stance as ChartAiAnalysis["stance"]) : base.stance;
+    const action = ACTIONS.includes(parsed.action as never) ? (parsed.action as ChartAiAnalysis["action"]) : base.action;
+    const consistent = !STANCE_ACTION_CONFLICT(stance, action);
+    const conf = Number(parsed.confidence_score);
 
     const result: ChartAiAnalysis = {
-      symbol: upper,
-      timeframe,
-      title: String(parsed.title || `${upper} Technical Analysis`),
-      stance: (parsed.stance as ChartAiAnalysis["stance"]) ?? "BULLISH",
-      confidence_score: Number(parsed.confidence_score ?? 75),
-      action: (parsed.action as ChartAiAnalysis["action"]) ?? "BUY ON PULLBACK",
-      entry_zone: {
-        min: Number(entryZone.min ?? snap.lastClose * 0.98),
-        max: Number(entryZone.max ?? snap.lastClose * 1.01),
-      },
-      targets: Array.isArray(parsed.targets)
-        ? (parsed.targets as Array<Record<string, unknown>>).map((t) => ({
-            label: String(t.label || "Target"),
-            price: Number(t.price ?? snap.lastClose * 1.1),
-            upside_pct: t.upside_pct !== undefined ? Number(t.upside_pct) : undefined,
-          }))
-        : [
-            { label: "Target 1", price: Math.round(snap.lastClose * 1.08), upside_pct: 8.0 },
-            { label: "Target 2", price: Math.round(snap.lastClose * 1.16), upside_pct: 16.0 },
-          ],
-      stop_loss: {
-        price: Number(stopLoss.price ?? snap.lastClose * 0.95),
-        risk_pct: stopLoss.risk_pct !== undefined ? Number(stopLoss.risk_pct) : undefined,
-      },
-      risk_reward_ratio: String(parsed.risk_reward_ratio || "1:2.5"),
-      recommended_indicators: Array.isArray(parsed.recommended_indicators)
-        ? (parsed.recommended_indicators as ChartAiIndicator[])
-        : [],
-      recommended_drawings: Array.isArray(parsed.recommended_drawings)
-        ? (parsed.recommended_drawings as ChartAiDrawing[])
-        : [],
+      ...base,
+      title: typeof parsed.title === "string" && parsed.title.length > 8 ? parsed.title : base.title,
+      stance: consistent ? stance : base.stance,
+      action: consistent ? action : base.action,
+      confidence_score: Number.isFinite(conf) ? Math.round(Math.max(0, Math.min(100, conf))) : base.confidence_score,
       article: {
-        why_tools_used: String(article.why_tools_used || "Technical indicators provide multi-timeframe confirmation."),
-        what_chart_says: String(article.what_chart_says || "Price action demonstrates defined structural support."),
-        what_to_do: String(article.what_to_do || "Accumulate within the defined entry zone with risk controls."),
-        risk_factors: Array.isArray(article.risk_factors) ? article.risk_factors.map(String) : [],
+        executive_summary: str("executive_summary"),
+        market_structure: str("market_structure"),
+        momentum_volatility: str("momentum_volatility"),
+        volume_analysis: str("volume_analysis"),
+        multi_timeframe: str("multi_timeframe"),
+        why_tools_used: str("why_tools_used"),
+        what_chart_says: str("what_chart_says"),
+        what_to_do: str("what_to_do"),
+        risk_factors:
+          Array.isArray(art.risk_factors) && art.risk_factors.length ? art.risk_factors.map(String) : base.article.risk_factors,
       },
-      evaluated_at: new Date().toISOString(),
       source: "agy",
     };
 
     chartCache.set(cacheKey, { data: result, timestamp: Date.now() });
     return result;
   } catch (err: unknown) {
-    console.warn(`AGY chart analysis failed for ${upper}, falling back to analytical heuristic:`, err);
-    const fallback = generateChartHeuristic(upper, candles, timeframe);
-    chartCache.set(cacheKey, { data: fallback, timestamp: Date.now() });
-    return fallback;
+    console.warn(`AGY chart analysis failed for ${upper}, using quant engine narrative:`, err);
+    chartCache.set(cacheKey, { data: base, timestamp: Date.now() });
+    return base;
   }
 }
 
-// Fallback technical heuristic calculator
-function generateChartHeuristic(symbol: string, candles: CandleRecord[], timeframe = "1D"): ChartAiAnalysis {
-  const upper = symbol.toUpperCase();
-  const snap = computeTechnicalSnapshots(candles);
-  const { swingHighs, swingLows } = extractSwingPoints(candles);
-
-  const lastClose = snap.lastClose || 100;
-  const isUptrend = lastClose >= snap.sma20 && snap.sma20 >= snap.sma50;
-  const isDowntrend = lastClose < snap.sma20 && snap.sma20 < snap.sma50;
-
-  const stance: ChartAiAnalysis["stance"] = isUptrend
-    ? "BULLISH"
-    : isDowntrend
-    ? "BEARISH"
-    : "NEUTRAL / ACCUMULATION";
-
-  const action: ChartAiAnalysis["action"] = isUptrend
-    ? "BUY ON PULLBACK"
-    : isDowntrend
-    ? "WAIT / AVOID"
-    : "HOLD / ACCUMULATE";
-
-  const lastHigh = swingHighs[swingHighs.length - 1]?.price ?? lastClose * 1.08;
-  const secondHigh = swingHighs[swingHighs.length - 2]?.price ?? lastClose * 1.15;
-  const lastLow = swingLows[swingLows.length - 1]?.price ?? lastClose * 0.94;
-
-  const stopPrice = Math.round(lastLow * 0.98);
-  const target1 = Math.round(Math.max(lastHigh, lastClose * 1.06));
-  const target2 = Math.round(Math.max(secondHigh, lastClose * 1.14));
-
-  const recommendedDrawings: ChartAiDrawing[] = [];
-
-  // Trendline if 2 swing lows exist
-  if (swingLows.length >= 2) {
-    const p1 = swingLows[swingLows.length - 2];
-    const p2 = swingLows[swingLows.length - 1];
-    recommendedDrawings.push({
-      name: "segment",
-      label: "Ascending Support Trendline",
-      points: [
-        { timestamp: p1.timestamp, value: p1.price },
-        { timestamp: p2.timestamp, value: p2.price },
-      ],
-      color: "#16a34a",
-      reason: `Connects key swing lows at NPR ${p1.price.toFixed(1)} and NPR ${p2.price.toFixed(1)} defining trend trajectory.`,
-    });
-  }
-
-  // Horizontal Resistance
-  if (swingHighs.length >= 1) {
-    const sh = swingHighs[swingHighs.length - 1];
-    recommendedDrawings.push({
-      name: "horizontalStraightLine",
-      label: `Overhead Swing Resistance (NPR ${sh.price.toFixed(1)})`,
-      points: [{ timestamp: sh.timestamp, value: sh.price }],
-      color: "#dc2626",
-      reason: `Historical supply zone where previous price rejection occurred at NPR ${sh.price.toFixed(1)}.`,
-    });
-  }
-
-  // Horizontal Support
-  if (swingLows.length >= 1) {
-    const sl = swingLows[swingLows.length - 1];
-    recommendedDrawings.push({
-      name: "horizontalStraightLine",
-      label: `Key Pivot Support (NPR ${sl.price.toFixed(1)})`,
-      points: [{ timestamp: sl.timestamp, value: sl.price }],
-      color: "#2563eb",
-      reason: `Structural price floor where buyers previously stepped in at NPR ${sl.price.toFixed(1)}.`,
-    });
-  }
-
-  // Demand Box
-  if (candles.length >= 15) {
-    const startC = candles[Math.max(0, candles.length - 25)];
-    const endC = candles[candles.length - 1];
-    recommendedDrawings.push({
-      name: "rect",
-      label: "High-Volume Demand Zone",
-      points: [
-        { timestamp: startC.time * 1000, value: Math.round(lastClose * 1.01) },
-        { timestamp: endC.time * 1000, value: Math.round(lastClose * 0.96) },
-      ],
-      color: "#10b981",
-      reason: "Institutional accumulation pocket providing liquidity absorption.",
-    });
-  }
-
-  return {
-    symbol: upper,
-    timeframe,
-    title: `${upper} Technical Analysis: ${isUptrend ? "Constructive Uptrend with Bullish Bias" : "Consolidation Range"}`,
-    stance,
-    confidence_score: isUptrend ? 80 : 65,
-    action,
-    entry_zone: {
-      min: Math.round(lastClose * 0.98),
-      max: Math.round(lastClose * 1.01),
-    },
-    targets: [
-      { label: "Target 1 (Primary Resistance)", price: target1, upside_pct: Math.round(((target1 - lastClose) / lastClose) * 1000) / 10 },
-      { label: "Target 2 (Extended Extension)", price: target2, upside_pct: Math.round(((target2 - lastClose) / lastClose) * 1000) / 10 },
-    ],
-    stop_loss: {
-      price: stopPrice,
-      risk_pct: Math.round(((lastClose - stopPrice) / lastClose) * 1000) / 10,
-    },
-    risk_reward_ratio: "1:2.4",
-    recommended_indicators: [
-      { type: "ema", period: 20, color: "#3b82f6", reason: "Dynamic 20-period short-term momentum guide" },
-      { type: "sma", period: 50, color: "#f59e0b", reason: "Intermediate cyclical support baseline" },
-      { type: "supertrend", period: 10, color: "#10b981", reason: "Trailing stop regime and volatility envelope" },
-      { type: "rsi", period: 14, color: "#8b5cf6", reason: "Momentum gauge to detect overbought/oversold conditions" },
-    ],
-    recommended_drawings: recommendedDrawings,
-    article: {
-      why_tools_used: `To objectively evaluate ${upper} on the ${timeframe} chart, we deploy a confluent toolkit balancing moving average trend alignment, momentum oscillators, and structural geometric levels. The 20 EMA (NPR ${snap.ema20.toFixed(1)}) and 50 SMA (NPR ${snap.sma50.toFixed(1)}) are chosen to filter out random intraday noise and isolate true institutional directional commitment. Complementing trend metrics, RSI 14 (currently ${snap.rsi14.toFixed(1)}) provides momentum velocity diagnostics without premature exit signals. On the chart canvas, the ascending trendline anchors consecutive higher swing lows, while the horizontal resistance line highlights where prior supply overhead met price rejection.`,
-      what_chart_says: `${upper} is trading at NPR ${lastClose.toFixed(2)}. Price action exhibits ${isUptrend ? "an orderly sequence of higher swing highs and higher swing lows, maintaining position comfortably above both the 20 EMA and 50 SMA." : "a consolidation phase with price compressing between immediate support and overhead resistance."} Volume profile indicates ${snap.lastVol > snap.avgVol ? "expanding liquidity participation confirming price commitment." : "steady consolidation volume."} The momentum indicator (RSI at ${snap.rsi14.toFixed(1)}) confirms healthy buying power with sufficient headroom before reaching overbought extremes.`,
-      what_to_do: `Tactical Playbook for ${upper}:
-1. Accumulation Strategy: Stagger entries across the defined buy zone (NPR ${Math.round(lastClose * 0.98)} - ${Math.round(lastClose * 1.01)}). Avoid chasing impulsive green candles and instead capitalize on intraday pullbacks toward the 20 EMA.
-2. Profit Targets: Secure partial gains (30-50%) at Target 1 (NPR ${target1}), and trail remaining exposure using the 20 EMA toward Target 2 (NPR ${target2}).
-3. Risk Invalidation: Maintain a strict stop-loss below NPR ${stopPrice}. A decisive closing breakdown below this level invalidates the bullish thesis and warrants capital preservation.`,
-      risk_factors: [
-        `Breakdown below structural support at NPR ${stopPrice} invalidates the setup.`,
-        "Overhead profit-taking near prior swing highs may induce consolidation periods.",
-      ],
-    },
-    evaluated_at: new Date().toISOString(),
-    source: "heuristic",
-  };
-}
-
-function extractSwingPoints(candles: CandleRecord[]) {
-  const swingHighs: Array<{ timestamp: number; price: number; dateStr: string }> = [];
-  const swingLows: Array<{ timestamp: number; price: number; dateStr: string }> = [];
-
-  const len = candles.length;
-  if (len < 5) return { swingHighs, swingLows };
-
-  for (let i = 2; i < len - 2; i++) {
-    const c = candles[i];
-    const isPeak =
-      c.high >= candles[i - 1].high &&
-      c.high > candles[i - 2].high &&
-      c.high >= candles[i + 1].high &&
-      c.high > candles[i + 2].high;
-    const isTrough =
-      c.low <= candles[i - 1].low &&
-      c.low < candles[i - 2].low &&
-      c.low <= candles[i + 1].low &&
-      c.low < candles[i + 2].low;
-
-    if (isPeak) {
-      swingHighs.push({
-        timestamp: c.time * 1000,
-        price: c.high,
-        dateStr: new Date(c.time * 1000).toISOString().split("T")[0],
-      });
-    }
-    if (isTrough) {
-      swingLows.push({
-        timestamp: c.time * 1000,
-        price: c.low,
-        dateStr: new Date(c.time * 1000).toISOString().split("T")[0],
-      });
-    }
-  }
-
-  return { swingHighs, swingLows };
-}
-
-function computeTechnicalSnapshots(candles: CandleRecord[]) {
-  const closes = candles.map((c) => c.close);
-  const len = closes.length;
-  const lastClose = closes[len - 1] ?? 0;
-
-  const sma20 = len >= 20 ? closes.slice(len - 20).reduce((a, b) => a + b, 0) / 20 : lastClose;
-  const sma50 = len >= 50 ? closes.slice(len - 50).reduce((a, b) => a + b, 0) / 50 : lastClose;
-
-  let ema20 = closes[0] ?? 0;
-  const k20 = 2 / (20 + 1);
-  for (let i = 1; i < len; i++) {
-    ema20 = closes[i] * k20 + ema20 * (1 - k20);
-  }
-
-  let gain = 0;
-  let loss = 0;
-  for (let i = Math.max(1, len - 14); i < len; i++) {
-    const d = closes[i] - closes[i - 1];
-    if (d > 0) gain += d;
-    else loss -= d;
-  }
-  const avgGain = gain / 14;
-  const avgLoss = loss / 14;
-  const rsi14 = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
-
-  const vols = candles.map((c) => c.volume);
-  const lastVol = vols[len - 1] ?? 0;
-  const avgVol = len >= 20 ? vols.slice(len - 20).reduce((a, b) => a + b, 0) / 20 : lastVol;
-
-  return { lastClose, sma20, sma50, ema20, rsi14, lastVol, avgVol };
-}
 
 // Fallback heuristic generators if agy is offline or busy
 function generateCompanyHeuristic(data: Record<string, unknown>): CompanyAiEvaluation {

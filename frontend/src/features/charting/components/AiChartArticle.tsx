@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChartAiAnalysis } from "@/features/ai/types";
+import type { ChartAiAnalysis, ChartQuant } from "@/features/ai/types";
 
 export function AiChartArticle({
   analysis,
@@ -122,6 +122,12 @@ export function AiChartArticle({
         </div>
       </div>
 
+      {analysis.article.executive_summary && (
+        <p className="rounded-lg border-l-4 border-primary bg-primary/5 px-4 py-3 text-sm leading-relaxed text-foreground">
+          {analysis.article.executive_summary}
+        </p>
+      )}
+
       {/* Trade Setup Matrix (What to do execution cards) */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Entry Zone */}
@@ -177,6 +183,8 @@ export function AiChartArticle({
         </div>
       </div>
 
+      {analysis.quant && <QuantPanels q={analysis.quant} />}
+
       {/* Applied Tools & Indicators Pills */}
       <div className="rounded-xl border border-border/60 bg-muted/20 p-3.5 space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -212,44 +220,24 @@ export function AiChartArticle({
 
       {/* The 3-Part Technical Research Article */}
       <div className="space-y-4 pt-1">
-        {/* Section 1: Why these tools were chosen */}
-        <section className="rounded-xl border border-border/70 bg-card p-4 space-y-2">
-          <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-            <span className="flex h-5 w-5 items-center justify-center rounded bg-primary/20 text-primary text-xs font-extrabold">
-              1
-            </span>
-            <h3>Why These Tools & Indicators Were Chosen</h3>
-          </div>
-          <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line font-normal space-y-2">
-            {analysis.article.why_tools_used}
-          </div>
-        </section>
-
-        {/* Section 2: What does this chart say */}
-        <section className="rounded-xl border border-border/70 bg-card p-4 space-y-2">
-          <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-            <span className="flex h-5 w-5 items-center justify-center rounded bg-primary/20 text-primary text-xs font-extrabold">
-              2
-            </span>
-            <h3>What Does This Chart Say? (Price Action & Market Structure)</h3>
-          </div>
-          <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line font-normal space-y-2">
-            {analysis.article.what_chart_says}
-          </div>
-        </section>
-
-        {/* Section 3: What to do with this */}
-        <section className="rounded-xl border border-border/70 bg-card p-4 space-y-2">
-          <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-            <span className="flex h-5 w-5 items-center justify-center rounded bg-primary/20 text-primary text-xs font-extrabold">
-              3
-            </span>
-            <h3>What To Do With This? (Actionable Strategy & Risk Playbook)</h3>
-          </div>
-          <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line font-normal space-y-2">
-            {analysis.article.what_to_do}
-          </div>
-        </section>
+        {(
+          [
+            ["Market Structure & Key Levels", analysis.article.market_structure],
+            ["Momentum & Volatility", analysis.article.momentum_volatility],
+            ["Volume & Order Flow", analysis.article.volume_analysis],
+            ["Multi-Timeframe Context", analysis.article.multi_timeframe],
+            ["Why This Toolkit", analysis.article.why_tools_used],
+            analysis.article.executive_summary ? null : ["What The Chart Says", analysis.article.what_chart_says],
+            ["Execution Playbook (Entry · Scaling · Stop · Sizing)", analysis.article.what_to_do],
+          ] as Array<[string, string | undefined] | null>
+        ).map((s, i) =>
+          s && s[1] ? (
+            <section key={i} className="rounded-xl border border-border/70 bg-card p-4 space-y-2">
+              <h3 className="text-sm font-bold text-foreground">{s[0]}</h3>
+              <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">{s[1]}</div>
+            </section>
+          ) : null
+        )}
 
         {/* Risk factors callout */}
         {analysis.article.risk_factors?.length > 0 && (
@@ -269,5 +257,131 @@ export function AiChartArticle({
         )}
       </div>
     </article>
+  );
+}
+
+const biasColor = (b: number) => (b > 0 ? "text-emerald-600 dark:text-emerald-400" : b < 0 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground");
+const biasDot = (b: number) => (b > 0 ? "bg-emerald-500" : b < 0 ? "bg-rose-500" : "bg-muted-foreground/50");
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-lg border border-border/60 bg-card p-3 space-y-0.5">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="font-mono text-sm font-extrabold text-foreground">{value}</div>
+      {sub && <div className="text-[11px] text-muted-foreground leading-snug">{sub}</div>}
+    </div>
+  );
+}
+
+function QuantPanels({ q }: { q: ChartQuant }) {
+  const scorePos = (q.score + 100) / 2;
+  const p = q.plan;
+  return (
+    <div className="space-y-3">
+      {/* Confluence scorecard + key levels */}
+      <div className="grid gap-3 lg:grid-cols-5">
+        <div className="lg:col-span-3 rounded-xl border border-border/70 bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-foreground">Confluence Scorecard</span>
+            <span className={`font-mono text-sm font-extrabold ${biasColor(q.score)}`}>
+              {q.score > 0 ? "+" : ""}{q.score} / 100
+            </span>
+          </div>
+          <div className="relative h-2 rounded-full bg-gradient-to-r from-rose-500/70 via-muted to-emerald-500/70">
+            <div className="absolute -top-1 h-4 w-1 rounded bg-foreground" style={{ left: `calc(${scorePos}% - 2px)` }} />
+          </div>
+          <ul className="space-y-1.5">
+            {q.signals.map((s) => (
+              <li key={s.name} className="flex items-start gap-2 text-[11px] leading-snug">
+                <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${biasDot(s.bias)}`} />
+                <span className="w-36 shrink-0 font-semibold text-foreground">{s.name}</span>
+                <span className="text-muted-foreground">{s.detail}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="lg:col-span-2 rounded-xl border border-border/70 bg-card p-4 space-y-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-foreground">Key Levels Ladder</span>
+          <ul className="space-y-1 font-mono text-xs">
+            {q.levels.filter((l) => l.kind === "resistance").map((l) => (
+              <li key={l.price} className="flex items-center justify-between text-rose-600 dark:text-rose-400">
+                <span>R {l.price}</span>
+                <span className="text-muted-foreground">{l.touches}× · {"★".repeat(l.strength)} · +{Math.abs(l.distance_pct)}%</span>
+              </li>
+            ))}
+            <li className="flex items-center justify-between rounded bg-primary/10 px-1.5 py-1 font-extrabold text-primary">
+              <span>▶ Price {q.last_close}</span>
+              <span className="text-[10px]">POC {q.volume.poc} · VA {q.volume.va_low}–{q.volume.va_high}</span>
+            </li>
+            {q.levels.filter((l) => l.kind === "support").map((l) => (
+              <li key={l.price} className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                <span>S {l.price}</span>
+                <span className="text-muted-foreground">{l.touches}× · {"★".repeat(l.strength)} · −{Math.abs(l.distance_pct)}%</span>
+              </li>
+            ))}
+          </ul>
+          {q.fib && (
+            <p className="border-t border-border/60 pt-2 text-[11px] text-muted-foreground">
+              Fib ({q.fib.direction === "UP" ? "up-leg" : "down-leg"} {q.fib.swing_low}–{q.fib.swing_high}):{" "}
+              {q.fib.levels.map((f) => `${Math.round(f.ratio * 1000) / 10}% ${f.price}`).join(" · ")} · ext 127% {q.fib.ext_1272} · 162% {q.fib.ext_1618}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Regime / momentum / volatility / volume / range stats */}
+      <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <Stat label="Regime" value={q.regime.label} sub={`ADX ${q.regime.adx} · +DI ${q.regime.plus_di} / −DI ${q.regime.minus_di}`} />
+        <Stat label="Structure" value={q.structure.bias} sub={q.structure.sequence} />
+        <Stat label="Momentum" value={`RSI ${q.momentum.rsi}`} sub={`MACD ${q.momentum.macd_state} · Stoch ${q.momentum.stoch_k}`} />
+        <Stat label="Volatility" value={`ATR ${q.volatility.atr} (${q.volatility.atr_pct}%)`} sub={`BB width ${q.volatility.bb_width_pctile}th pct${q.volatility.squeeze ? " · SQUEEZE" : ""} · 20-bar σ ±${q.volatility.exp_move_20d_pct}%`} />
+        <Stat label="Volume" value={`${q.volume.rel_vol}× avg`} sub={q.volume.obv_trend} />
+        <Stat label="52W Range" value={`${q.range.pos_pct}% of range`} sub={`${q.range.low_52w} – ${q.range.high_52w} (${q.range.from_high_pct}% from high)`} />
+      </div>
+
+      {/* Multi-timeframe + candle evidence */}
+      {(q.mtf.length > 0 || q.patterns.length > 0) && (
+        <div className="flex flex-wrap gap-2 text-[11px]">
+          {q.mtf.map((m) => (
+            <span key={m.tf} className="rounded-full border border-border/70 bg-background px-3 py-1 font-semibold">
+              {m.tf}: <span className={biasColor(m.trend === "UP" ? 1 : m.trend === "DOWN" ? -1 : 0)}>{m.trend}</span> · RSI {m.rsi}
+            </span>
+          ))}
+          {q.patterns.map((pt, i) => (
+            <span key={i} className="rounded-full border border-border/70 bg-background px-3 py-1">
+              <span className={biasColor(pt.bias)}>●</span> {pt.name} <span className="text-muted-foreground">{pt.date}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Scenarios + trade math */}
+      <div className="grid gap-3 lg:grid-cols-4">
+        {q.scenarios.map((s, i) => (
+          <div key={s.name} className="rounded-xl border border-border/70 bg-card p-3.5 space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              <span className="truncate">{s.name}</span>
+              <span className={`font-mono ${i === 0 ? "text-emerald-600" : i === 2 ? "text-rose-600" : "text-primary"}`}>{s.probability}%</span>
+            </div>
+            <div className="h-1.5 rounded bg-muted">
+              <div className={`h-1.5 rounded ${i === 0 ? "bg-emerald-500" : i === 2 ? "bg-rose-500" : "bg-primary"}`} style={{ width: `${s.probability}%` }} />
+            </div>
+            <div className="font-mono text-sm font-extrabold text-foreground">→ NPR {s.target}</div>
+            <p className="text-[11px] text-muted-foreground leading-snug">{s.trigger}</p>
+          </div>
+        ))}
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3.5 space-y-1">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Trade Math</div>
+          <div className="font-mono text-xs text-foreground">T3 NPR {p.targets[2]} ({p.rr[2]}R)</div>
+          <div className="font-mono text-xs text-foreground">R:R {p.rr[0]} / {p.rr[1]} / {p.rr[2]}</div>
+          <div className="font-mono text-xs text-foreground">Risk {p.risk_pct}% per share</div>
+          <div className="font-mono text-xs text-foreground">NPR 10k risk ≈ {p.shares_per_10k_risk.toLocaleString()} sh</div>
+        </div>
+      </div>
+      <p className="text-[10px] text-muted-foreground">
+        Scenario probabilities are model estimates derived from the confluence score, not forecasts. Not investment advice.
+      </p>
+    </div>
   );
 }
