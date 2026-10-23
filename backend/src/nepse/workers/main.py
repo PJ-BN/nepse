@@ -13,6 +13,7 @@ from datetime import date, time, timedelta
 from sqlalchemy import text
 
 from nepse.application.fundamentals.ingest_all import ingest_all, ingest_navs
+from nepse.application.fundamentals.ingest_sector_metrics import ingest_sector_metrics
 from nepse.application.ingestion.backfill import backfill
 from nepse.application.ingestion.crosscheck import crosscheck_eod
 from nepse.application.ingestion.eod import run_eod
@@ -37,6 +38,7 @@ from nepse.infrastructure.upstream.nepalipaisa import NepaliPaisaClient
 from nepse.infrastructure.upstream.nepsealpha import NepseAlphaClient
 from nepse.infrastructure.upstream.nrb import NrbClient
 from nepse.infrastructure.upstream.sebon import SebonClient
+from nepse.infrastructure.upstream.sharesansar_reports import ShareSansarReports
 from nepse.infrastructure.upstream.nepse.client import NepseClient, new_http_client
 from nepse.infrastructure.upstream.nepse.wasm_token import TokenSolver
 
@@ -93,6 +95,11 @@ def daily_jobs(repo: SqlIngestionRepository) -> list[DailyJob]:
         async with SessionLocal() as session:
             return await ingest_navs(sharesansar.ShareSansarClient(sharesansar_http), SqlFundamentalsRepository(session))
 
+    async def sector_metrics():
+        async with SessionLocal() as session:
+            return await ingest_sector_metrics(await repo.active_symbols(), SqlFundamentalsRepository(session),
+                                               ShareSansarReports(sharesansar_http))
+
     async def paisa():
         return await fundamentals(nepalipaisa), await navs()
 
@@ -104,6 +111,7 @@ def daily_jobs(repo: SqlIngestionRepository) -> list[DailyJob]:
         DailyJob("eod_crosscheck", time(15, 30), crosscheck),
         DailyJob("fundamentals_merolagani", time(16, 0), lambda: fundamentals(merolagani)),
         DailyJob("fundamentals_nepalipaisa", time(17, 0), paisa),  # + mutual-fund NAVs
+        DailyJob("sector_metrics", time(17, 30), sector_metrics),  # BFI NPL/CAR/... from ShareSansar reports
         DailyJob("macro_nrb", time(18, 0), lambda: macro(ingest_nrb, nrb)),
         DailyJob("macro_sebon", time(19, 0), lambda: macro(ingest_sebon, sebon)),
         DailyJob("verify_adjusted", time(20, 0), lambda: verify_adjusted_job(repo), days="thu"),  # weekly, after close

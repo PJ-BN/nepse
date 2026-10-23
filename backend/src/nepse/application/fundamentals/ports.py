@@ -128,3 +128,15 @@ class FundamentalsRepository(Protocol):
     async def latest_price(self, company_id: int) -> PriceInfo | None: ...
     async def latest_nav(self, company_id: int) -> NavRow | None: ...
     async def upsert_navs(self, company_id: int, rows: list[NavRow]) -> int: ...  # idempotent per (company, nav_date)
+
+
+@dataclass
+class SectorReport:
+    """Sector-specific figures from one company's latest quarterly report."""
+    fy_bs: str
+    quarter: int
+    metrics: dict[str, float]
+
+
+class SectorReportSource(Protocol):
+    async def sector_report(self, symbol: str) -> SectorReport | None: ...  # None: no usable table for this company
