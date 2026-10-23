@@ -22,7 +22,7 @@ export const harmonic: DrawingDef = {
         if (c.length < 3) return out;
         out.push(fill(c.slice(0, 3), BLUE));
         if (c.length >= 4) out.push(fill(c.slice(2, 5), BLUE));
-        const legs = LEGS.filter(([a, b]) => c[b]);
+        const legs = LEGS.filter(([, b]) => c[b]);
         out.push(lines(legs.map(([a, b]) => [c[a], c[b]]), true));
         const v = overlay.points.map((p) => p.value);
         if (v.length === 5 && v.every((x) => x !== undefined)) {
