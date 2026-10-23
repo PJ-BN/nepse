@@ -107,7 +107,7 @@ export function ChartView({
       )}
       {symbol && (
         <div style={{ height, minHeight: 280 }} className="resize-y overflow-hidden rounded">
-          <NepseTradingChart symbol={symbol} candles={history.data ?? []} overlay={overlay} intraday={intraday} indicators={indicators} onChart={setChart} />
+          <NepseTradingChart symbol={symbol} timeframe={resolution} candles={history.data ?? []} overlay={overlay} intraday={intraday} indicators={indicators} onChart={setChart} />
         </div>
       )}
     </section>
