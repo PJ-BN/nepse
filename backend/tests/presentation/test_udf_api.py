@@ -41,7 +41,7 @@ def repo(override):
 
 async def test_config(client):
     body = (await client.get("/api/v1/udf/config")).json()
-    assert body["supported_resolutions"] == ["1", "5", "15", "60", "1D"]
+    assert body["supported_resolutions"] == ["1", "5", "15", "60", "1D", "1W", "1M"]
     assert body["supports_search"] is True and body["supports_time"] is False
 
 
@@ -65,6 +65,14 @@ async def test_daily_history_adjusted_and_raw(client, repo):
     assert adj["s"] == "ok" and adj["t"] == [TS] and adj["c"] == [52.5] and adj["v"] == [2000]
     raw = (await client.get("/api/v1/udf/history", params={**p, "adjusted": "false"})).json()
     assert raw["c"] == [105] and raw["o"] == [100] and raw["v"] == [1000]
+
+
+async def test_weekly_monthly_history(client, repo):
+    p = {"symbol": "NABIL", "from": TS - 86400, "to": TS + 86400}
+    w = (await client.get("/api/v1/udf/history", params={**p, "resolution": "1W"})).json()
+    assert w["s"] == "ok" and w["t"] == [TS] and w["c"] == [52.5]  # 2025-01-05 is a Sunday: its own week start
+    m = (await client.get("/api/v1/udf/history", params={**p, "resolution": "1M"})).json()
+    assert m["t"] == [TS - 4 * 86400]  # 2025-01-01
 
 
 async def test_history_no_data_and_errors(client, repo):

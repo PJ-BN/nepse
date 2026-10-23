@@ -1,20 +1,34 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { BrokerVwapOverlay, useBrokerAnalytics } from "@/features/floorsheet";
 import { useHistory } from "../hooks/useHistory";
-import { RESOLUTIONS, type Resolution } from "../types";
+import { INDEX_CODES, isIntraday, RESOLUTION_LABEL, RESOLUTIONS, type Indicator, type Resolution } from "../types";
 import { NepseTradingChart } from "./NepseTradingChart";
+import { SymbolSearch } from "./SymbolSearch";
 
-export function ChartView({ symbol }: { symbol: string }) {
-  const router = useRouter();
+/** One chart panel: its own symbol, timeframe and price mode. Height is set by the parent and drag-resizable. */
+export function ChartView({
+  symbol,
+  onSymbolChange,
+  onRemove,
+  indicators,
+  height,
+}: {
+  symbol: string;
+  onSymbolChange: (s: string) => void;
+  onRemove?: () => void;
+  indicators: Indicator[];
+  height: string;
+}) {
   const [adjusted, setAdjusted] = useState(true);
-  const [input, setInput] = useState(symbol);
   const [resolution, setResolution] = useState<Resolution>("1D");
   const [showVwap, setShowVwap] = useState(false);
+  const isIndex = INDEX_CODES.includes(symbol);
+  const intraday = isIntraday(resolution);
   const history = useHistory(symbol, adjusted, resolution);
-  const analytics = useBrokerAnalytics(showVwap ? symbol : "", 30);
+  const analytics = useBrokerAnalytics(showVwap && !isIndex ? symbol : "", 30);
   const overlay = useMemo(
     () =>
       analytics.data
@@ -28,37 +42,9 @@ export function ChartView({ symbol }: { symbol: string }) {
   );
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const next = input.trim().toUpperCase();
-            if (next) router.push(`/chart?symbol=${encodeURIComponent(next)}`);
-          }}
-        >
-          <label className="sr-only" htmlFor="symbol">Symbol</label>
-          <input
-            id="symbol"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Symbol, e.g. NABIL"
-            className="rounded border px-2 py-1 font-mono uppercase"
-          />
-        </form>
-        <div role="group" aria-label="Price adjustment" className="flex overflow-hidden rounded border text-xs">
-          {([true, false] as const).map((v) => (
-            <button
-              key={String(v)}
-              type="button"
-              aria-pressed={adjusted === v}
-              onClick={() => setAdjusted(v)}
-              className={`px-3 py-1 ${adjusted === v ? "bg-foreground text-background" : ""}`}
-            >
-              {v ? "ADJ" : "UNADJ"}
-            </button>
-          ))}
-        </div>
+    <section className="flex min-w-0 flex-col gap-2 rounded border p-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <SymbolSearch value={symbol} onSelect={onSymbolChange} />
         <div role="group" aria-label="Resolution" className="flex overflow-hidden rounded border text-xs">
           {RESOLUTIONS.map((r) => (
             <button
@@ -66,22 +52,61 @@ export function ChartView({ symbol }: { symbol: string }) {
               type="button"
               aria-pressed={resolution === r}
               onClick={() => setResolution(r)}
-              className={`px-3 py-1 ${resolution === r ? "bg-foreground text-background" : ""}`}
+              className={`px-2 py-1 ${resolution === r ? "bg-foreground text-background" : ""}`}
             >
-              {r === "1D" ? "1D" : r === "60" ? "1h" : `${r}m`}
+              {RESOLUTION_LABEL[r]}
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-1 text-xs">
-          <input type="checkbox" checked={showVwap} onChange={(e) => setShowVwap(e.target.checked)} />
-          Broker VWAP (30d)
-        </label>
-        <span className="text-xs text-gray-500">SMA 20 (amber) · SMA 50 (blue) · RSI 14</span>
+        {!isIndex && (
+          <>
+            <div role="group" aria-label="Price adjustment" className="flex overflow-hidden rounded border text-xs">
+              {([true, false] as const).map((v) => (
+                <button
+                  key={String(v)}
+                  type="button"
+                  aria-pressed={adjusted === v}
+                  onClick={() => setAdjusted(v)}
+                  className={`px-2 py-1 ${adjusted === v ? "bg-foreground text-background" : ""}`}
+                >
+                  {v ? "ADJ" : "UNADJ"}
+                </button>
+              ))}
+            </div>
+            <label className="flex items-center gap-1 text-xs">
+              <input type="checkbox" checked={showVwap} onChange={(e) => setShowVwap(e.target.checked)} />
+              Broker VWAP
+            </label>
+          </>
+        )}
+        <span className="ml-auto flex items-center gap-3 text-xs">
+          {symbol && !isIndex && (
+            <>
+              <Link href={`/company/${symbol}`} className="text-blue-700 hover:underline">Company</Link>
+              <Link href={`/simulator?symbol=${symbol}`} className="text-blue-700 hover:underline">Simulate</Link>
+            </>
+          )}
+          {onRemove && (
+            <button type="button" onClick={onRemove} aria-label="Remove chart" className="text-gray-500 hover:text-red-600">
+              ✕
+            </button>
+          )}
+        </span>
       </div>
-      {!symbol && <p className="text-sm text-gray-500">Enter a symbol to load its chart.</p>}
+      {!symbol && <p className="text-sm text-gray-500">Search a symbol or company to load its chart.</p>}
       {history.isError && <p className="text-sm text-red-600">Failed to load {symbol}: {String(history.error)}</p>}
-      {history.data?.length === 0 && <p className="text-sm text-gray-500">No price history for {symbol}.</p>}
-      {symbol && <NepseTradingChart candles={history.data ?? []} overlay={overlay} intraday={resolution !== "1D"} />}
-    </div>
+      {history.isSuccess && history.data.length === 0 && (
+        <p className="text-sm text-gray-500">
+          {intraday
+            ? `No ${RESOLUTION_LABEL[resolution]} data for ${symbol}: intraday bars only exist for days whose floorsheet was ingested${isIndex ? ", and indices have none" : ""}. Try 1D.`
+            : `No price history for ${symbol}.`}
+        </p>
+      )}
+      {symbol && (
+        <div style={{ height, minHeight: 280 }} className="resize-y overflow-hidden rounded">
+          <NepseTradingChart candles={history.data ?? []} overlay={overlay} intraday={intraday} indicators={indicators} />
+        </div>
+      )}
+    </section>
   );
 }
