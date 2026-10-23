@@ -1,12 +1,24 @@
 name: CI
 
+# Pull requests into main are the only way code lands: run on the PR, and again on main after the merge.
 on:
-  push:
   pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   backend:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: backend
@@ -32,17 +44,23 @@ jobs:
       REDIS_URL: redis://localhost:6379/0
     steps:
       - uses: actions/checkout@v4
+      - name: No leftover merge-conflict markers
+        working-directory: .
+        run: "! git grep -nE '^(<<<<<<<|>>>>>>>) ' -- . ':!*.lock'"
       - uses: astral-sh/setup-uv@v5
         with:
           version: "0.11.22"
           python-version: "3.12"
       - run: uv sync --frozen --extra dev
+      - name: Exactly one Alembic head (parallel branches each add a migration; join them in the PR)
+        run: test "$(uv run alembic heads | grep -c '(head)')" = 1
       - run: uv run alembic upgrade head
       - run: uv run pytest -q
       - run: uv run lint-imports
 
   frontend:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: frontend
@@ -57,3 +75,11 @@ jobs:
       - run: npm run lint
       - run: npx tsc --noEmit
       - run: npm test
+
+  # One stable check name for branch protection ("CI passed"), whatever jobs are added above.
+  ci-passed:
+    if: always()
+    needs: [backend, frontend]
+    runs-on: ubuntu-24.04
+    steps:
+      - run: test "${{ needs.backend.result }}" = success && test "${{ needs.frontend.result }}" = success

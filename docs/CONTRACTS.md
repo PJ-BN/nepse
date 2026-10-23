@@ -1,6 +1,6 @@
 # Shared contracts for parallel branches
 
-Every workstream branches from `main` and is merged back into `main` at the end. Follow these rules so the merges stay mechanical.
+Every workstream branches from `main` and reaches `main` only through a pull request on GitHub: push the branch, open a PR, wait for the `CI passed` check, then merge there (squash). Do not merge locally or push to `main`. Follow these rules so the merges stay mechanical.
 
 The full spec is in `NEPSE_Analytics_Platform_Master_Blueprint.pdf`. The phased plan below summarises it.
 
