@@ -21,22 +21,28 @@ export function DrawingToolbar({
   magnet,
   locked,
   hidden,
+  canUndo,
+  canRedo,
   onPick,
   onMagnet,
   onLock,
   onHide,
   onUndo,
+  onRedo,
   onClear,
 }: {
   active: string | null;
   magnet: OverlayMode;
   locked: boolean;
   hidden: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
   onPick: (name: string) => void;
   onMagnet: () => void;
   onLock: () => void;
   onHide: () => void;
   onUndo: () => void;
+  onRedo: () => void;
   onClear: () => void;
 }) {
   return (
@@ -58,9 +64,10 @@ export function DrawingToolbar({
         </button>
         <button type="button" aria-pressed={locked} onClick={onLock} className={`${btn} text-left ${locked ? on : ""}`}>Lock drawings</button>
         <button type="button" aria-pressed={hidden} onClick={onHide} className={`${btn} text-left ${hidden ? on : ""}`}>Hide drawings</button>
-        <button type="button" onClick={onUndo} className={`${btn} text-left`}>Remove last</button>
+        <button type="button" disabled={!canUndo} onClick={onUndo} title="Ctrl+Z" className={`${btn} text-left disabled:opacity-40`}>Undo</button>
+        <button type="button" disabled={!canRedo} onClick={onRedo} title="Ctrl+Shift+Z" className={`${btn} text-left disabled:opacity-40`}>Redo</button>
         <button type="button" onClick={onClear} className={`${btn} text-left`}>Clear all</button>
-        <span className="text-[10px] text-gray-500">Right-click a drawing to delete it.</span>
+        <span className="text-[10px] text-gray-500">Click a drawing to edit it; right-click to delete.</span>
       </div>
     </div>
   );
