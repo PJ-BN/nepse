@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import type { Chart } from "klinecharts";
 import { useMemo, useState } from "react";
 import { BrokerVwapOverlay, useBrokerAnalytics } from "@/features/floorsheet";
 import { useHistory } from "../hooks/useHistory";
+import { NepseLayers } from "../klines/nepse/NepseLayers";
 import { INDEX_CODES, isIntraday, RESOLUTION_LABEL, RESOLUTIONS, type Indicator, type Resolution } from "../types";
 import { NepseTradingChart } from "./NepseTradingChart";
 import { SymbolSearch } from "./SymbolSearch";
@@ -25,6 +27,7 @@ export function ChartView({
   const [adjusted, setAdjusted] = useState(true);
   const [resolution, setResolution] = useState<Resolution>("1D");
   const [showVwap, setShowVwap] = useState(false);
+  const [chart, setChart] = useState<Chart | null>(null);
   const isIndex = INDEX_CODES.includes(symbol);
   const intraday = isIntraday(resolution);
   const history = useHistory(symbol, adjusted, resolution);
@@ -83,7 +86,7 @@ export function ChartView({
           {symbol && !isIndex && (
             <>
               <Link href={`/company/${symbol}`} className="text-blue-700 hover:underline">Company</Link>
-              <Link href={`/simulator?symbol=${symbol}`} className="text-blue-700 hover:underline">Simulate</Link>
+              <NepseLayers chart={chart} symbol={symbol} candles={history.data ?? []} adjusted={adjusted} />
             </>
           )}
           {onRemove && (
@@ -104,7 +107,7 @@ export function ChartView({
       )}
       {symbol && (
         <div style={{ height, minHeight: 280 }} className="resize-y overflow-hidden rounded">
-          <NepseTradingChart symbol={symbol} candles={history.data ?? []} overlay={overlay} intraday={intraday} indicators={indicators} />
+          <NepseTradingChart symbol={symbol} candles={history.data ?? []} overlay={overlay} intraday={intraday} indicators={indicators} onChart={setChart} />
         </div>
       )}
     </section>
