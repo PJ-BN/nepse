@@ -63,6 +63,5 @@ Run inside the worker image, e.g. `docker compose run --rm worker python -m neps
 | `adjust [SYMBOL ...]` | Recompute `adj_factor` from corporate actions (all companies by default). |
 | `verify-adjusted [SYMBOL ...]` | Compare our adjusted closes with NepseAlpha's; logs breaches. |
 | `job <id>` | Run one scheduled daily job now (ids: `eod_crosscheck`, `fundamentals_merolagani`, `fundamentals_nepalipaisa`, `macro_nrb`, `macro_sebon`, `verify_adjusted`). |
-| `floorsheet-backfill [DAYS]` | Load the last DAYS (default 90) of floorsheet, resumable. |
 | `eod` | Run the end-of-day pipeline once, then refresh the screener. |
 | `poll` | Run one live-market poll. |

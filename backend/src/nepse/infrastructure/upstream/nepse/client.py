@@ -125,9 +125,6 @@ class NepseClient:
     def floorsheet(self) -> AsyncIterator[list[FloorsheetTick]]:
         return self._floorsheet()
 
-    def floorsheet_on(self, day: date) -> AsyncIterator[list[FloorsheetTick]]:
-        return self._floorsheet(businessDate=day.isoformat())
-
     async def _floorsheet(self, **params) -> AsyncIterator[list[FloorsheetTick]]:
         page, pages = 0, 1
         market_id = (await self.market_open()).market_id

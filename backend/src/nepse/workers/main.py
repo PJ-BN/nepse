@@ -4,7 +4,6 @@ Run once by hand: `python -m nepse.workers.main eod` (or `poll`), or
 `python -m nepse.workers.main backfill [SYMBOL ...]` for 10 years of ShareSansar history (resumable).
 `python -m nepse.workers.main adjust [SYMBOL ...]` recomputes adj_factor from corporate actions (all by default).
 `python -m nepse.workers.main index-backfill` loads about a year of daily bars for all 17 indices.
-`python -m nepse.workers.main floorsheet-backfill [DAYS]` loads the last DAYS (90) days of floorsheet (resumable).
 """
 import asyncio
 import logging
@@ -18,7 +17,6 @@ from nepse.application.fundamentals.ingest_sector_metrics import ingest_sector_m
 from nepse.application.ingestion.backfill import backfill
 from nepse.application.ingestion.crosscheck import crosscheck_eod
 from nepse.application.ingestion.eod import run_eod
-from nepse.application.ingestion.floorsheet_backfill import backfill_floorsheet
 from nepse.application.macro.use_cases import ingest_nrb, ingest_sebon
 from nepse.application.charting.recompute_adjustments import recompute_adjustments
 from nepse.application.charting.verify_adjusted import verify_adjusted
@@ -152,11 +150,6 @@ async def main(command: str | None, args: list[str]) -> None:
             return
         if command == "index-backfill":  # the ~1 year of daily bars for all 17 indices (RRG, macro overlay)
             log.info("index backfill: %d bars", await repo.upsert_index_bars(await source.index_history()))
-            return
-        if command == "floorsheet-backfill":  # [DAYS] (default 90); resumable, skips days already stored
-            end = now_npt().date()
-            done = await backfill_floorsheet(source, repo, end - timedelta(days=int(args[0]) if args else 90), end)
-            log.info("floorsheet backfill: %d days, %d ticks", len(done), sum(done.values()))
             return
         build_scheduler(source, store, repo, refresh_screener, daily_jobs(repo)).start()
         log.info("worker started")

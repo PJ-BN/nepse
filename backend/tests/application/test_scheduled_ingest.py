@@ -4,7 +4,6 @@ from decimal import Decimal
 from nepse.application.fundamentals.ingest_all import ingest_all, ingest_navs
 from nepse.application.fundamentals.ports import FinancialSnapshot, NavRow, UpstreamError
 from nepse.application.ingestion.crosscheck import crosscheck_eod
-from nepse.application.ingestion.floorsheet_backfill import backfill_floorsheet
 from nepse.domain.market.entities import DailyBar
 
 from .fakes import FakeRepo, tick
@@ -39,29 +38,6 @@ async def test_crosscheck_reports_mismatch_and_missing(caplog):
     assert len(report.mismatches) == 4 and all(m.startswith("NABIL") for m in report.mismatches)  # o/h/l/c, not volume
     assert report.missing_in_store == ["NEW"]
     assert "eod crosscheck" in caplog.text
-
-
-class FloorsheetSource:
-    def __init__(self):
-        self.days = []
-
-    async def floorsheet_on(self, day):
-        self.days.append(day)
-        yield [tick(day.day)]
-
-
-async def test_floorsheet_backfill_skips_weekend_and_stored_days():
-    repo = FakeRepo()
-
-    async def have(start, end):
-        return {date(2026, 10, 15)}
-
-    repo.floorsheet_days = have
-    source = FloorsheetSource()
-    # Wed 14 .. Sun 18: Thu stored, Fri/Sat are not sessions -> only Wed and Sun
-    done = await backfill_floorsheet(source, repo, date(2026, 10, 14), date(2026, 10, 18))
-    assert source.days == [date(2026, 10, 14), date(2026, 10, 18)] and sum(done.values()) == 2
-    assert repo.refreshed == [(date(2026, 10, 14), date(2026, 10, 18))]
 
 
 class Source:
