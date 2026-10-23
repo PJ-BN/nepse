@@ -11,6 +11,14 @@ export const hlcv = (d: KLineData[]) => ({
   v: d.map((x) => x.volume ?? 0),
 });
 
+export const ohlcv = (d: KLineData[]) => ({
+  o: d.map((x) => x.open),
+  h: d.map((x) => x.high),
+  l: d.map((x) => x.low),
+  c: d.map((x) => x.close),
+  v: d.map((x) => x.volume ?? 0),
+});
+
 // Nepal is UTC+5:45; bars on the same local day share a group id.
 const NPT = (5 * 60 + 45) * 60_000;
 const DAY = 86_400_000;

@@ -106,11 +106,268 @@ export function adx(h: number[], l: number[], c: number[], period = 14) {
 }
 
 // SMA over a series that may start with nulls.
-function smaN(values: N[], period: number): N[] {
+export function smaN(values: N[], period: number): N[] {
   const start = values.findIndex((v) => v !== null);
   const out: N[] = values.map(() => null);
   if (start >= 0) sma(values.slice(start) as number[], period).forEach((v, i) => (out[start + i] = v));
   return out;
+}
+
+// EMA over a series that may start with nulls.
+export function emaN(values: N[], period: number): N[] {
+  const start = values.findIndex((v) => v !== null);
+  const out: N[] = values.map(() => null);
+  if (start >= 0) ema(values.slice(start) as number[], period).forEach((v, i) => (out[start + i] = v));
+  return out;
+}
+
+// Weighted Moving Average (WMA)
+export function wma(values: number[], period: number): N[] {
+  const weightSum = (period * (period + 1)) / 2;
+  const out: N[] = values.map(() => null);
+  for (let i = period - 1; i < values.length; i++) {
+    let sum = 0;
+    for (let j = 0; j < period; j++) {
+      sum += values[i - period + 1 + j] * (j + 1);
+    }
+    out[i] = sum / weightSum;
+  }
+  return out;
+}
+
+export function wmaN(values: N[], period: number): N[] {
+  const start = values.findIndex((v) => v !== null);
+  const out: N[] = values.map(() => null);
+  if (start >= 0) wma(values.slice(start) as number[], period).forEach((v, i) => (out[start + i] = v));
+  return out;
+}
+
+// Hull Moving Average (HMA): WMA(2*WMA(n/2) - WMA(n), sqrt(n))
+export function hma(values: number[], period: number): N[] {
+  const half = Math.max(1, Math.floor(period / 2));
+  const sqrtPeriod = Math.max(1, Math.round(Math.sqrt(period)));
+  const wHalf = wma(values, half);
+  const wFull = wma(values, period);
+  const diff: N[] = values.map((_, i) => (wHalf[i] === null || wFull[i] === null ? null : 2 * wHalf[i]! - wFull[i]!));
+  return wmaN(diff, sqrtPeriod);
+}
+
+// Double Exponential Moving Average (DEMA): 2 * EMA(n) - EMA(EMA(n), n)
+export function dema(values: number[], period: number): N[] {
+  const e1 = ema(values, period);
+  const e2 = emaN(e1, period);
+  return values.map((_, i) => (e1[i] === null || e2[i] === null ? null : 2 * e1[i]! - e2[i]!));
+}
+
+// Triple Exponential Moving Average (TEMA): 3*EMA - 3*EMA(EMA) + EMA(EMA(EMA))
+export function tema(values: number[], period: number): N[] {
+  const e1 = ema(values, period);
+  const e2 = emaN(e1, period);
+  const e3 = emaN(e2, period);
+  return values.map((_, i) => (e1[i] === null || e2[i] === null || e3[i] === null ? null : 3 * e1[i]! - 3 * e2[i]! + e3[i]!));
+}
+
+// Volume Weighted Moving Average (VWMA)
+export function vwma(closes: number[], volumes: number[], period: number): N[] {
+  const pv = closes.map((c, i) => c * (volumes[i] ?? 0));
+  let sumPv = 0;
+  let sumVol = 0;
+  return closes.map((_, i) => {
+    sumPv += pv[i] - (i >= period ? pv[i - period] : 0);
+    sumVol += (volumes[i] ?? 0) - (i >= period ? volumes[i - period] ?? 0 : 0);
+    if (i < period - 1) return null;
+    return sumVol === 0 ? closes[i] : sumPv / sumVol;
+  });
+}
+
+// Money Flow Index (MFI)
+export function mfi(h: number[], l: number[], c: number[], v: number[], period = 14): N[] {
+  const out: N[] = c.map(() => null);
+  const tp = c.map((_, i) => (h[i] + l[i] + c[i]) / 3);
+  const rmf = tp.map((p, i) => p * (v[i] ?? 0));
+  const posFlow = c.map(() => 0);
+  const negFlow = c.map(() => 0);
+
+  for (let i = 1; i < c.length; i++) {
+    if (tp[i] > tp[i - 1]) posFlow[i] = rmf[i];
+    else if (tp[i] < tp[i - 1]) negFlow[i] = rmf[i];
+  }
+
+  let posSum = 0;
+  let negSum = 0;
+  for (let i = 1; i < c.length; i++) {
+    posSum += posFlow[i] - (i > period ? posFlow[i - period] : 0);
+    negSum += negFlow[i] - (i > period ? negFlow[i - period] : 0);
+    if (i >= period) {
+      out[i] = negSum === 0 ? 100 : 100 - 100 / (1 + posSum / negSum);
+    }
+  }
+  return out;
+}
+
+// Chaikin Money Flow (CMF)
+export function cmf(h: number[], l: number[], c: number[], v: number[], period = 20): N[] {
+  const mfv = c.map((close, i) => {
+    const high = h[i];
+    const low = l[i];
+    const vol = v[i] ?? 0;
+    if (high === low) return 0;
+    return (((close - low) - (high - close)) / (high - low)) * vol;
+  });
+
+  let sumMfv = 0;
+  let sumVol = 0;
+  return c.map((_, i) => {
+    sumMfv += mfv[i] - (i >= period ? mfv[i - period] : 0);
+    sumVol += (v[i] ?? 0) - (i >= period ? v[i - period] ?? 0 : 0);
+    if (i < period - 1) return null;
+    return sumVol === 0 ? 0 : sumMfv / sumVol;
+  });
+}
+
+// Aroon Indicator: Up, Down, Oscillator
+export function aroon(h: number[], l: number[], period = 14) {
+  const up: N[] = h.map(() => null);
+  const down: N[] = l.map(() => null);
+  const osc: N[] = h.map(() => null);
+
+  for (let i = period; i < h.length; i++) {
+    let maxIdx = i;
+    let minIdx = i;
+    let maxVal = h[i];
+    let minVal = l[i];
+
+    for (let j = 0; j <= period; j++) {
+      const idx = i - j;
+      if (h[idx] >= maxVal) {
+        maxVal = h[idx];
+        maxIdx = idx;
+      }
+      if (l[idx] <= minVal) {
+        minVal = l[idx];
+        minIdx = idx;
+      }
+    }
+
+    const u = ((period - (i - maxIdx)) / period) * 100;
+    const d = ((period - (i - minIdx)) / period) * 100;
+    up[i] = u;
+    down[i] = d;
+    osc[i] = u - d;
+  }
+  return { up, down, osc };
+}
+
+// Relative Vigor Index (RVI)
+export function rvi(o: number[], h: number[], l: number[], c: number[], period = 14) {
+  const num: number[] = c.map(() => 0);
+  const den: number[] = c.map(() => 0);
+
+  for (let i = 3; i < c.length; i++) {
+    num[i] = ((c[i] - o[i]) + 2 * (c[i - 1] - o[i - 1]) + 2 * (c[i - 2] - o[i - 2]) + (c[i - 3] - o[i - 3])) / 6;
+    den[i] = ((h[i] - l[i]) + 2 * (h[i - 1] - l[i - 1]) + 2 * (h[i - 2] - l[i - 2]) + (h[i - 3] - l[i - 3])) / 6;
+  }
+
+  const sNum = sma(num, period);
+  const sDen = sma(den, period);
+  const line: N[] = c.map((_, i) => (sNum[i] === null || sDen[i] === null || sDen[i] === 0 ? null : sNum[i]! / sDen[i]!));
+  const signal: N[] = c.map(() => null);
+
+  for (let i = 3; i < c.length; i++) {
+    if (line[i] !== null && line[i - 1] !== null && line[i - 2] !== null && line[i - 3] !== null) {
+      signal[i] = (line[i]! + 2 * line[i - 1]! + 2 * line[i - 2]! + line[i - 3]!) / 6;
+    }
+  }
+
+  return { rvi: line, signal };
+}
+
+// True Strength Index (TSI)
+export function tsi(c: number[], slow = 25, fast = 13, signal = 13) {
+  const mom = c.map((val, i) => (i === 0 ? 0 : val - c[i - 1]));
+  const absMom = mom.map(Math.abs);
+
+  const e1 = ema(mom, slow);
+  const e2 = emaN(e1, fast);
+  const a1 = ema(absMom, slow);
+  const a2 = emaN(a1, fast);
+
+  const line: N[] = c.map((_, i) => (e2[i] === null || a2[i] === null || a2[i] === 0 ? null : 100 * (e2[i]! / a2[i]!)));
+  const sig = emaN(line, signal);
+
+  return { tsi: line, signal: sig };
+}
+
+// Percentage Price Oscillator (PPO)
+export function ppo(c: number[], fast = 12, slow = 26, signal = 9) {
+  const f = ema(c, fast);
+  const s = ema(c, slow);
+  const line: N[] = c.map((_, i) => (f[i] === null || s[i] === null || s[i] === 0 ? null : 100 * ((f[i]! - s[i]!) / s[i]!)));
+  const sig = emaN(line, signal);
+  const hist: N[] = line.map((v, i) => (v === null || sig[i] === null ? null : v - sig[i]!));
+  return { ppo: line, signal: sig, hist };
+}
+
+// Chande Momentum Oscillator (CMO)
+export function cmo(c: number[], period = 14): N[] {
+  const out: N[] = c.map(() => null);
+  let gain = 0;
+  let loss = 0;
+
+  const diffs = c.map((val, i) => (i === 0 ? 0 : val - c[i - 1]));
+  const gains = diffs.map((d) => (d > 0 ? d : 0));
+  const losses = diffs.map((d) => (d < 0 ? -d : 0));
+
+  for (let i = 1; i < c.length; i++) {
+    gain += gains[i] - (i > period ? gains[i - period] : 0);
+    loss += losses[i] - (i > period ? losses[i - period] : 0);
+    if (i >= period) {
+      const sum = gain + loss;
+      out[i] = sum === 0 ? 0 : 100 * ((gain - loss) / sum);
+    }
+  }
+  return out;
+}
+
+// Historical Volatility (HV, Annualized % based on 252 trading days)
+export function histVol(c: number[], period = 20, annualDays = 252): N[] {
+  const out: N[] = c.map(() => null);
+  const logReturns = c.map((val, i) => (i === 0 || c[i - 1] === 0 ? 0 : Math.log(val / c[i - 1])));
+  const factor = Math.sqrt(annualDays) * 100;
+
+  for (let i = period; i < c.length; i++) {
+    let mean = 0;
+    for (let j = i - period + 1; j <= i; j++) mean += logReturns[j];
+    mean /= period;
+
+    let variance = 0;
+    for (let j = i - period + 1; j <= i; j++) variance += (logReturns[j] - mean) ** 2;
+    const sd = Math.sqrt(variance / (period - 1 || 1));
+    out[i] = sd * factor;
+  }
+  return out;
+}
+
+// Moving Average Envelopes
+export function envelopes(c: number[], period = 20, pct = 2.5) {
+  const mid = sma(c, period);
+  const factor = pct / 100;
+  return {
+    mid,
+    upper: mid.map((m) => (m === null ? null : m * (1 + factor))),
+    lower: mid.map((m) => (m === null ? null : m * (1 - factor))),
+  };
+}
+
+// Bollinger Band Width & %B
+export function bbw(c: number[], period = 20, mult = 2) {
+  const { mid, upper, lower } = bollinger(c, period, mult);
+  const width: N[] = mid.map((m, i) => (m === null || upper[i] === null || lower[i] === null || m === 0 ? null : (upper[i]! - lower[i]!) / m));
+  const pctB: N[] = c.map((val, i) => {
+    if (upper[i] === null || lower[i] === null || upper[i] === lower[i]) return null;
+    return (val - lower[i]!) / (upper[i]! - lower[i]!);
+  });
+  return { width, pctB };
 }
 
 const rawStoch = (v: number[], hh: N[], ll: N[]): N[] => v.map((x, i) => (hh[i] === null ? null : hh[i] === ll[i] ? 50 : (100 * (x - ll[i]!)) / (hh[i]! - ll[i]!)));

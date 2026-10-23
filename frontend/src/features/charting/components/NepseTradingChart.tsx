@@ -33,18 +33,47 @@ const barStyles = {
 };
 
 // The grid's indicator list → klinecharts indicators. Same-type entries share one indicator (one param per line).
-const KIND = { sma: ["MA", true], ema: ["EMA", true], bb: ["BOLL", true], rsi: ["RSI", false], macd: ["MACD", false] } as const;
+const KIND: Record<import("../types").IndicatorType, readonly [string, boolean]> = {
+  sma: ["MA", true],
+  ema: ["EMA", true],
+  wma: ["WMA", true],
+  hma: ["HMA", true],
+  dema: ["DEMA", true],
+  tema: ["TEMA", true],
+  vwma: ["VWMA", true],
+  bb: ["BOLL", true],
+  envelopes: ["ENVELOPES", true],
+  supertrend: ["SUPERTREND", true],
+  keltner: ["KELTNER", true],
+  donchian: ["DONCHIAN", true],
+  rsi: ["RSI", false],
+  macd: ["MACD", false],
+  mfi: ["MFI", false],
+  cmf: ["CMF", false],
+  aroon: ["AROON", false],
+  tsi: ["TSI", false],
+  ppo: ["PPO", false],
+  cmo: ["CMO", false],
+  atr: ["ATR", false],
+  adx: ["ADX", false],
+};
 
 function fromList(list: Indicator[]): IndicatorCreate[] {
   const out: IndicatorCreate[] = [];
   for (const type of Object.keys(KIND) as (keyof typeof KIND)[]) {
-    let items = list.filter((i) => i.type === type);
+    const items = list.filter((i) => i.type === type);
     if (!items.length) continue;
     const [name, main] = KIND[type];
-    if (type === "bb" || type === "macd") items = items.slice(0, 1); // one of each is meaningful
     const ind: IndicatorCreate = { name };
-    if (type === "bb") ind.calcParams = [items[0].period, 2];
-    else if (type !== "macd") ind.calcParams = items.map((i) => i.period);
+    if (type === "bb") {
+      ind.calcParams = [items[0].period, 2];
+    } else if (type === "envelopes") {
+      ind.calcParams = [items[0].period, 2.5];
+    } else if (type === "supertrend") {
+      ind.calcParams = [items[0].period, 3];
+    } else if (type !== "macd") {
+      ind.calcParams = items.map((i) => i.period);
+    }
     if (type !== "macd") ind.styles = { lines: items.map((i) => ({ color: i.color })) } as never;
     if (main) ind.paneId = MAIN;
     out.push(ind);

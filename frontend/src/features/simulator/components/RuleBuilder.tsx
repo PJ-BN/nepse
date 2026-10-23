@@ -4,12 +4,42 @@ import { type Combinator, INDICATORS, newIndicator, newRow, OPERATORS, type IndO
 
 const INPUT = "rounded border bg-transparent px-2 py-1";
 
+const INDICATOR_TITLES: Record<string, string> = {
+  open: "Open Price",
+  high: "High Price",
+  low: "Low Price",
+  close: "Close Price",
+  volume: "Volume",
+  sma: "SMA (Simple Moving Average)",
+  ema: "EMA (Exponential Moving Average)",
+  rsi: "RSI (Relative Strength Index)",
+  atr: "ATR (Average True Range)",
+  roc: "ROC (Rate of Change)",
+  highest: "Highest High",
+  lowest: "Lowest Low",
+  volume_sma: "Volume SMA",
+  obv: "OBV (On-Balance Volume)",
+  "macd.line": "MACD Line",
+  "macd.signal": "MACD Signal",
+  "macd.hist": "MACD Histogram",
+  "bb.mid": "Bollinger Middle Band",
+  "bb.upper": "Bollinger Upper Band",
+  "bb.lower": "Bollinger Lower Band",
+  "stoch.k": "Stochastic %K",
+  "stoch.d": "Stochastic %D",
+  "adx.adx": "ADX (Average Directional Index)",
+  "adx.plus_di": "+DI (Positive Directional Index)",
+  "adx.minus_di": "-DI (Negative Directional Index)",
+};
+
 function IndicatorPicker({ value, onChange }: { value: IndOperand; onChange: (o: IndOperand) => void }) {
   return (
     <span className="inline-flex items-center gap-1">
       <select aria-label="Indicator" value={value.ind} onChange={(e) => onChange(newIndicator(e.target.value))} className={INPUT}>
         {Object.keys(INDICATORS).map((k) => (
-          <option key={k} value={k}>{k}</option>
+          <option key={k} value={k}>
+            {k.toUpperCase()} — {INDICATOR_TITLES[k] ?? k}
+          </option>
         ))}
       </select>
       {Object.keys(value.params).map((p) => (

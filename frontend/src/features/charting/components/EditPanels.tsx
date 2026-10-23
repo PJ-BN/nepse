@@ -3,6 +3,7 @@
 import type { Chart, Overlay } from "klinecharts";
 import { useState } from "react";
 import { EXTEND_LABELS, extendOf } from "../drawings";
+import { getIndicatorInfo } from "../klines/indicators";
 import { applyParams, lineColor, type ChartSettings, type IndicatorParams, type Layouts } from "../settings";
 
 const btn = "rounded border px-2 py-1 text-xs hover:bg-foreground/10";
@@ -99,30 +100,59 @@ export function IndicatorSettings({
           applyParams(chart, ind, next);
           onParams(ind.name, next);
         };
+        const info = getIndicatorInfo(ind.name);
         return (
-          <div key={ind.id} className="flex flex-wrap items-center gap-2 border-b pb-2 last:border-0">
-            <span className="w-14 font-medium">{ind.shortName || ind.name}</span>
-            {ind.calcParams.map((v, i) => (
-              <input
-                key={i}
-                type="number"
-                aria-label={`${ind.name} parameter ${i + 1}`}
-                value={Number(v)}
-                min={1}
-                onChange={(e) => patch({ calcParams: ind.calcParams.map((o, j) => (j === i ? Math.max(1, Number(e.target.value) || 1) : Number(o))) })}
-                className="w-14 rounded border px-1 py-0.5"
-              />
-            ))}
-            {Array.from({ length: lines }, (_, i) => (
-              <input
-                key={i}
-                type="color"
-                aria-label={`${ind.name} line ${i + 1} colour`}
-                value={hex(saved.colors?.[i], hex(lineColor(chart, ind, i), "#888888"))}
-                onChange={(e) => patch({ colors: Array.from({ length: lines }, (_, j) => (j === i ? e.target.value : saved.colors?.[j] ?? "")) })}
-              />
-            ))}
-            <button type="button" onClick={() => onRemove(ind.name)} className={`${btn} ml-auto`}>Remove</button>
+          <div key={ind.id} className="space-y-1.5 border-b pb-2.5 last:border-0">
+            <div className="flex items-center justify-between">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="font-mono text-xs font-semibold text-blue-600 dark:text-blue-400">{ind.name}</span>
+                <span className="truncate text-[11px] text-muted-foreground" title={info?.label ?? ind.shortName}>
+                  {info?.label ?? ind.shortName}
+                </span>
+              </div>
+              <button type="button" onClick={() => onRemove(ind.name)} className={`${btn} text-red-600 hover:text-red-700`}>
+                Remove
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {ind.calcParams.map((v, i) => (
+                <label key={i} className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <span>P{i + 1}:</span>
+                  <input
+                    type="number"
+                    aria-label={`${ind.name} parameter ${i + 1}`}
+                    value={Number(v)}
+                    min={1}
+                    onChange={(e) =>
+                      patch({
+                        calcParams: ind.calcParams.map((o, j) =>
+                          j === i ? Math.max(1, Number(e.target.value) || 1) : Number(o),
+                        ),
+                      })
+                    }
+                    className="w-14 rounded border bg-background px-1 py-0.5 text-foreground"
+                  />
+                </label>
+              ))}
+              {Array.from({ length: lines }, (_, i) => (
+                <label key={i} className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <span>L{i + 1}:</span>
+                  <input
+                    type="color"
+                    aria-label={`${ind.name} line ${i + 1} colour`}
+                    value={hex(saved.colors?.[i], hex(lineColor(chart, ind, i), "#888888"))}
+                    onChange={(e) =>
+                      patch({
+                        colors: Array.from({ length: lines }, (_, j) =>
+                          j === i ? e.target.value : saved.colors?.[j] ?? "",
+                        ),
+                      })
+                    }
+                    className="h-6 w-7 cursor-pointer rounded border p-0.5"
+                  />
+                </label>
+              ))}
+            </div>
           </div>
         );
       })}

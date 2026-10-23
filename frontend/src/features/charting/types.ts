@@ -31,7 +31,30 @@ export const INDEX_CODES = [
   "NONLIFE", "HYDRO", "MANUFAC", "HOTEL", "TRADING", "INVEST", "OTHERS", "MUTUAL",
 ];
 
-export type IndicatorType = "sma" | "ema" | "bb" | "rsi" | "macd";
+export type IndicatorType =
+  | "sma"
+  | "ema"
+  | "wma"
+  | "hma"
+  | "dema"
+  | "tema"
+  | "vwma"
+  | "bb"
+  | "envelopes"
+  | "supertrend"
+  | "keltner"
+  | "donchian"
+  | "rsi"
+  | "macd"
+  | "mfi"
+  | "cmf"
+  | "aroon"
+  | "tsi"
+  | "ppo"
+  | "cmo"
+  | "atr"
+  | "adx";
+
 export type Indicator = { id: string; type: IndicatorType; period: number; color: string };
 
 export const DEFAULT_INDICATORS: Indicator[] = [

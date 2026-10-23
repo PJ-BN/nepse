@@ -1,5 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { adx, atr, bollinger, donchian, ema, ichimoku, keltner, macd, pivots, stochastic, stochRsi, supertrend, vwap } from "./indicators";
+import {
+  adx,
+  aroon,
+  atr,
+  bbw,
+  bollinger,
+  cmf,
+  cmo,
+  dema,
+  donchian,
+  ema,
+  envelopes,
+  histVol,
+  hma,
+  ichimoku,
+  keltner,
+  macd,
+  mfi,
+  pivots,
+  ppo,
+  rvi,
+  stochastic,
+  stochRsi,
+  supertrend,
+  tema,
+  tsi,
+  vwap,
+  vwma,
+  wma,
+} from "./indicators";
 
 describe("indicators", () => {
   it("ema seeds with sma then smooths", () => {
@@ -98,5 +127,111 @@ describe("custom indicators", () => {
     expect(r.p[2]).toBeCloseTo((12 + 8 + 9.5) / 3);
     expect(r.r1[2]).toBeCloseTo(2 * r.p[2]! - 8);
     expect(r.s2[2]).toBeCloseTo(r.p[2]! - 4);
+  });
+
+  it("wma gives greater weight to recent prices", () => {
+    const vals = [10, 20, 30];
+    const res = wma(vals, 3);
+    // (10*1 + 20*2 + 30*3) / (1+2+3) = (10 + 40 + 90) / 6 = 140 / 6 = 23.333...
+    expect(res[0]).toBeNull();
+    expect(res[1]).toBeNull();
+    expect(res[2]).toBeCloseTo(140 / 6);
+  });
+
+  it("hma produces responsive smoothing", () => {
+    const vals = Array.from({ length: 30 }, (_, i) => 100 + i * 2);
+    const res = hma(vals, 9);
+    expect(res[29]).not.toBeNull();
+    expect(res[29]!).toBeGreaterThan(100);
+  });
+
+  it("dema and tema reduce lag relative to plain ema", () => {
+    const vals = Array.from({ length: 40 }, (_, i) => 50 + i * 5);
+    const d = dema(vals, 10);
+    const t = tema(vals, 10);
+    expect(d[39]).not.toBeNull();
+    expect(t[39]).not.toBeNull();
+    expect(t[39]!).toBeGreaterThanOrEqual(vals[35]);
+  });
+
+  it("vwma weights prices by volume", () => {
+    const c = [10, 20];
+    const v = [100, 300];
+    const res = vwma(c, v, 2);
+    // (10*100 + 20*300) / (100+300) = (1000 + 6000) / 400 = 17.5
+    expect(res[0]).toBeNull();
+    expect(res[1]).toBe(17.5);
+  });
+
+  it("mfi stays bounded between 0 and 100", () => {
+    const h = [10, 12, 14, 16, 15, 17, 19, 21, 20, 22, 24, 26, 25, 27, 29, 31];
+    const l = [8, 10, 12, 14, 13, 15, 17, 19, 18, 20, 22, 24, 23, 25, 27, 29];
+    const c = [9, 11, 13, 15, 14, 16, 18, 20, 19, 21, 23, 25, 24, 26, 28, 30];
+    const v = [100, 150, 120, 200, 180, 250, 210, 300, 190, 280, 320, 400, 220, 350, 380, 420];
+    const res = mfi(h, l, c, v, 14);
+    expect(res[13]).toBeNull();
+    expect(res[14]).not.toBeNull();
+    expect(res[14]!).toBeGreaterThanOrEqual(0);
+    expect(res[14]!).toBeLessThanOrEqual(100);
+  });
+
+  it("cmf calculates money flow volume ratio", () => {
+    const h = Array.from({ length: 30 }, () => 100);
+    const l = Array.from({ length: 30 }, () => 90);
+    const c = Array.from({ length: 30 }, () => 95); // exactly mid -> MFV = 0
+    const v = Array.from({ length: 30 }, () => 1000);
+    const res = cmf(h, l, c, v, 20);
+    expect(res[19]).toBe(0);
+  });
+
+  it("aroon calculates up, down and oscillator", () => {
+    const upSeries = Array.from({ length: 30 }, (_, i) => 100 + i);
+    const res = aroon(upSeries, upSeries.map((x) => x - 2), 14);
+    expect(res.up[29]).toBe(100); // newest bar is the high
+    expect(res.down[29]).toBe(0); // lowest bar was 14 bars ago
+    expect(res.osc[29]).toBe(100);
+  });
+
+  it("rvi calculates vigor and signal", () => {
+    const o = Array.from({ length: 30 }, (_, i) => 100 + i);
+    const h = o.map((x) => x + 2);
+    const l = o.map((x) => x - 1);
+    const c = o.map((x) => x + 1);
+    const res = rvi(o, h, l, c, 14);
+    expect(res.rvi[20]).not.toBeNull();
+    expect(res.signal[20]).not.toBeNull();
+  });
+
+  it("tsi and ppo oscillate around zero", () => {
+    const c = Array.from({ length: 50 }, (_, i) => 100 + Math.sin(i / 3) * 10);
+    const t = tsi(c, 10, 5, 5);
+    const p = ppo(c, 12, 26, 9);
+    expect(t.tsi[49]).not.toBeNull();
+    expect(p.ppo[49]).not.toBeNull();
+    expect(p.hist[49]).not.toBeNull();
+  });
+
+  it("cmo bounded between -100 and +100", () => {
+    const c = Array.from({ length: 30 }, (_, i) => 100 + i * 2);
+    const res = cmo(c, 14);
+    expect(res[14]).toBe(100); // pure gains
+  });
+
+  it("histVol measures volatility percentage", () => {
+    const c = Array.from({ length: 30 }, (_, i) => 100 + (i % 2 === 0 ? 5 : -5));
+    const res = histVol(c, 14);
+    expect(res[14]).not.toBeNull();
+    expect(res[14]!).toBeGreaterThan(0);
+  });
+
+  it("envelopes and bbw bracket price", () => {
+    const c = Array.from({ length: 30 }, () => 100);
+    const env = envelopes(c, 20, 5);
+    expect(env.mid[25]).toBe(100);
+    expect(env.upper[25]).toBe(105);
+    expect(env.lower[25]).toBe(95);
+
+    const b = bbw(c, 20, 2);
+    expect(b.width[25]).toBe(0); // variance is 0
   });
 });
