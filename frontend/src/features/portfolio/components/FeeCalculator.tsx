@@ -85,7 +85,7 @@ export function FeeCalculator() {
             <option>INSTITUTION</option>
           </select>
         </label>
-        <button className="rounded bg-black px-3 py-1 text-white dark:bg-white dark:text-black">Calculate</button>
+        <button className="rounded bg-foreground px-3 py-1 text-background">Calculate</button>
       </form>
       {run.error && (
         <p role="alert" className="text-sm text-red-600">

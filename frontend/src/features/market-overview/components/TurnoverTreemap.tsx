@@ -31,7 +31,7 @@ export function TurnoverTreemap({ quotes, height = 420 }: { quotes: Quote[]; hei
           key={k}
           onClick={() => setBy(k)}
           aria-pressed={by === k}
-          className={`rounded border px-2 py-0.5 ${by === k ? "bg-gray-900 text-white" : ""}`}
+          className={`rounded border px-2 py-0.5 ${by === k ? "bg-foreground text-background" : ""}`}
         >
           {k === "turnover" ? "Turnover" : "Market cap"}
         </button>
@@ -62,7 +62,7 @@ export function TurnoverTreemap({ quotes, height = 420 }: { quotes: Quote[]; hei
         width: "100%",
         height: "100%",
         label: { formatter: (p: { name: string; data?: { pct?: number } }) => `${p.name}\n${pctOf(p)}`, fontSize: 11 },
-        itemStyle: { borderColor: "#fff", borderWidth: 1, gapWidth: 1 },
+        itemStyle: { borderColor: "rgba(128,128,128,0.3)", borderWidth: 1, gapWidth: 1 },
       },
     ],
   };

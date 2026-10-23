@@ -45,7 +45,7 @@ export function FloorsheetDashboard({ initialSymbol = "" }: { initialSymbol?: st
                 key={w}
                 onClick={() => setDays(w)}
                 aria-pressed={days === w}
-                className={`rounded border px-2 py-1 ${days === w ? "bg-gray-900 text-white" : ""}`}
+                className={`rounded border px-2 py-1 ${days === w ? "bg-foreground text-background" : ""}`}
               >
                 {w}D
               </button>

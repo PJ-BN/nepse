@@ -101,7 +101,7 @@ export function RrgChart() {
           <option value="daily">Daily (10-day)</option>
           <option value="weekly">Weekly (10-week)</option>
         </select>
-        <button type="button" className="rounded border px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+        <button type="button" className="rounded border px-3 py-1 hover:bg-gray-100"
                 onClick={() => { setStep(1); setPlaying(true); }}>
           {playing ? "Playing…" : "▶ Play tails"}
         </button>

@@ -51,7 +51,7 @@ export function ScreenerView() {
         </span>
         <button
           type="button"
-          className="rounded border px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+          className="rounded border px-3 py-1 hover:bg-gray-100"
           onClick={() => {
             setCsvError(null);
             downloadCsv(req).catch((e: Error) => setCsvError(e.message));
@@ -61,7 +61,7 @@ export function ScreenerView() {
         </button>
         <button
           type="button"
-          className="rounded border px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+          className="rounded border px-3 py-1 hover:bg-gray-100"
           onClick={() => {
             setCsvError(null);
             downloadXlsx(req).catch((e: Error) => setCsvError(e.message));

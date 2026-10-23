@@ -10,7 +10,7 @@ export function MutualFundsView() {
   if (error) return <p className="text-sm text-red-600">{error.message}</p>;
   return (
     <div className="space-y-3">
-      <p className="text-sm text-gray-600 dark:text-gray-400">
+      <p className="text-sm text-gray-600">
         Highlighted: trading more than 15% below NAV with maturity inside 12 months.
       </p>
       <table className="w-full text-sm">
@@ -27,7 +27,7 @@ export function MutualFundsView() {
         </thead>
         <tbody>
           {data?.map((f) => (
-            <tr key={f.symbol} className={f.flagged ? "bg-green-100 dark:bg-green-900/40" : "border-b"}>
+            <tr key={f.symbol} className={f.flagged ? "bg-green-100" : "border-b"}>
               <td className="py-1 font-medium">{f.symbol}</td>
               <td>{f.name}</td>
               <td className="text-right">{num(f.ltp)}</td>

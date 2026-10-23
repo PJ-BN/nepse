@@ -23,7 +23,7 @@ export function IpoPipelineTable() {
       <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
         {TABS.map((t, i) => (
           <button key={t.label} type="button" onClick={() => setTab(i)}
-                  className={`rounded border px-3 py-1 ${i === tab ? "border-blue-600 text-blue-700 dark:text-blue-300" : ""}`}>
+                  className={`rounded border px-3 py-1 ${i === tab ? "border-blue-600 text-blue-700" : ""}`}>
             {t.label} ({(data ?? []).filter(t.match).length})
           </button>
         ))}
@@ -34,7 +34,7 @@ export function IpoPipelineTable() {
       ) : (
         <div className="max-h-96 overflow-auto">
           <table className="min-w-full text-sm">
-            <thead className="sticky top-0 bg-white dark:bg-black">
+            <thead className="sticky top-0 bg-background">
               <tr className="border-b text-left">
                 <th className="px-2 py-1">Company</th>
                 <th className="px-2 py-1">Sector</th>

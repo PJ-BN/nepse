@@ -49,7 +49,7 @@ export function AuthForm() {
       )}
       <button
         disabled={busy}
-        className="rounded bg-black px-3 py-1 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+        className="rounded bg-foreground px-3 py-1 text-background disabled:opacity-50"
       >
         {mode === "login" ? "Log in" : "Register"}
       </button>

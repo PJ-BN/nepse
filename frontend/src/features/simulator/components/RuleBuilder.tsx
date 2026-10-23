@@ -90,13 +90,13 @@ export function RuleBuilder({
             type="button"
             aria-label="Remove condition"
             onClick={() => onChange(rows.filter((x) => x.id !== r.id), combinator)}
-            className="rounded border px-2 py-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="rounded border px-2 py-1 text-gray-500 hover:bg-gray-100"
           >
             ×
           </button>
         </div>
       ))}
-      <button type="button" onClick={() => onChange([...rows, newRow()], combinator)} className="rounded border px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-800">
+      <button type="button" onClick={() => onChange([...rows, newRow()], combinator)} className="rounded border px-3 py-1 hover:bg-gray-100">
         + Add condition
       </button>
     </div>
