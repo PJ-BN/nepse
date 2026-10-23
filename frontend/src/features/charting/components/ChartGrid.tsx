@@ -231,6 +231,7 @@ export function ChartGrid({ initial }: { initial: string[] }) {
             onAddAlert={(a) => setAlerts([...alerts, a])}
             onRemoveAlert={(id) => setAlerts(alerts.filter((a) => a.id !== id))}
             onSymbolChange={(v) => update(symbols.map((x, j) => (j === i ? v : x)))}
+            onApplyIndicators={saveIndicators}
             onRemove={symbols.length > 1 ? () => update(symbols.filter((_, j) => j !== i)) : undefined}
           />
         ))}

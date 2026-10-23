@@ -2,11 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from nepse.presentation.api import health
-from nepse.presentation.api.v1 import auth, breadth, calendar, company, floorsheet, macro, market, mutual_funds, nepse_layers, portfolio, screener, simulation, udf, ws
+from nepse.presentation.api.v1 import ai, auth, breadth, calendar, company, floorsheet, macro, market, mutual_funds, nepse_layers, portfolio, screener, simulation, udf, ws
 
 app = FastAPI(title="NEPSE Analytics API")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000"], allow_methods=["*"], allow_headers=["*"])
 app.include_router(health.router)
+app.include_router(ai.router)
 app.include_router(auth.router)
 app.include_router(breadth.router)
 app.include_router(calendar.router)

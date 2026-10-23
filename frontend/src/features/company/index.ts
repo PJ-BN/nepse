@@ -1,4 +1,5 @@
 export { CompanyPage } from "./components/CompanyPage";
+export { AiFundamentalCard } from "./components/AiFundamentalCard";
 export { DepthPanel } from "./components/DepthPanel";
 export { FinancialsTable } from "./components/FinancialsTable";
 export { LockinBadge } from "./components/LockinBadge";
