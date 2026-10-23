@@ -51,7 +51,9 @@ npm ci
 npm run lint && npx tsc --noEmit && npm test
 ```
 
-CI (`.github/workflows/ci.yml`) runs both on every push and pull request.
+## Contributing
+
+Changes reach `main` only through a pull request: branch from `main`, push, open a PR (the template lists what to check), and merge it on GitHub once the `CI passed` check is green. CI (`.github/workflows/ci.yml`) runs the backend and frontend checks above on every PR into `main` and again on `main` after the merge. It also fails a PR that leaves conflict markers behind or has more than one Alembic head, which happens when parallel branches each add a migration (join the heads in the PR).
 
 ## Worker commands
 
