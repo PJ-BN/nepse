@@ -100,19 +100,19 @@ export function StockCard({ stock, isWatchlisted, onToggleWatchlist, compact = f
           <div>
             <div className="flex items-baseline gap-2">
               <span className="font-mono text-2xl font-bold tracking-tight text-foreground">
-                NPR {stock.close.toLocaleString()}
+                NPR {(stock.close ?? 0).toLocaleString()}
               </span>
               <span
                 className={`font-mono text-xs font-semibold ${
-                  stock.changePct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                  (stock.changePct ?? 0) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                 }`}
               >
-                {stock.changePct >= 0 ? "+" : ""}
-                {stock.changePct.toFixed(2)}%
+                {(stock.changePct ?? 0) >= 0 ? "+" : ""}
+                {(stock.changePct ?? 0).toFixed(2)}%
               </span>
             </div>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Vol: {stock.volume.toLocaleString()} shares • Turnover: NPR {(stock.turnover / 10000000).toFixed(2)} Cr
+              Vol: {(stock.volume ?? 0).toLocaleString()} shares • Turnover: NPR {(((stock.turnover ?? 0) / 10000000)).toFixed(2)} Cr
             </p>
           </div>
 
@@ -161,14 +161,14 @@ export function StockCard({ stock, isWatchlisted, onToggleWatchlist, compact = f
             <span className="block text-muted-foreground text-[10px] uppercase">RSI 14</span>
             <span
               className={`font-mono font-bold ${
-                stock.rsi14 >= 70
+                (stock.rsi14 ?? 50) >= 70
                   ? "text-rose-500"
-                  : stock.rsi14 <= 35
+                  : (stock.rsi14 ?? 50) <= 35
                   ? "text-amber-500"
                   : "text-emerald-600 dark:text-emerald-400"
               }`}
             >
-              {stock.rsi14.toFixed(1)}
+              {(stock.rsi14 ?? 50).toFixed(1)}
             </span>
           </div>
           <div className="rounded-lg border border-border/50 bg-muted/30 p-1.5">
@@ -187,10 +187,10 @@ export function StockCard({ stock, isWatchlisted, onToggleWatchlist, compact = f
             <span className="block text-muted-foreground text-[10px] uppercase">Top 3 Brokers</span>
             <span
               className={`font-mono font-bold ${
-                stock.brokerAccumulationPct >= 38 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                (stock.brokerAccumulationPct ?? 0) >= 38 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
               }`}
             >
-              {stock.brokerAccumulationPct.toFixed(1)}% Acc.
+              {(stock.brokerAccumulationPct ?? 0).toFixed(1)}% Acc.
             </span>
           </div>
         </div>

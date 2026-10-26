@@ -110,12 +110,12 @@ export function WatchlistView() {
       s.symbol,
       `"${s.name.replace(/"/g, '""')}"`,
       s.sector,
-      s.close,
-      s.changePct,
+      s.close ?? 0,
+      s.changePct ?? 0,
       s.action,
       s.confidenceScore,
-      s.rsi14.toFixed(1),
-      `${s.brokerAccumulationPct.toFixed(1)}%`,
+      (s.rsi14 ?? 50).toFixed(1),
+      `${(s.brokerAccumulationPct ?? 0).toFixed(1)}%`,
       s.tradePlan ? `"${s.tradePlan.entryMin} - ${s.tradePlan.entryMax}"` : "N/A",
       s.tradePlan ? s.tradePlan.stopLoss : "N/A",
       s.tradePlan ? s.tradePlan.target1 : "N/A",
@@ -494,15 +494,15 @@ export function WatchlistView() {
                       <div className="truncate max-w-[120px] text-[10px] text-muted-foreground">{s.name}</div>
                     </td>
                     <td className="py-3 px-3 font-mono font-bold text-foreground">
-                      NPR {s.close.toLocaleString()}
+                      NPR {(s.close ?? 0).toLocaleString()}
                     </td>
                     <td
                       className={`py-3 px-3 font-mono font-semibold ${
-                        s.changePct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                        (s.changePct ?? 0) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                       }`}
                     >
-                      {s.changePct >= 0 ? "+" : ""}
-                      {s.changePct.toFixed(2)}%
+                      {(s.changePct ?? 0) >= 0 ? "+" : ""}
+                      {(s.changePct ?? 0).toFixed(2)}%
                     </td>
                     <td className="py-3 px-3">
                       <span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold ${badge}`}>
@@ -512,9 +512,9 @@ export function WatchlistView() {
                     <td className="py-3 px-3 font-mono font-bold text-primary">
                       {s.confidenceScore}/100
                     </td>
-                    <td className="py-3 px-3 font-mono text-muted-foreground">{s.rsi14.toFixed(1)}</td>
+                    <td className="py-3 px-3 font-mono text-muted-foreground">{(s.rsi14 ?? 50).toFixed(1)}</td>
                     <td className="py-3 px-3 font-mono font-medium text-foreground">
-                      {s.brokerAccumulationPct.toFixed(1)}%
+                      {(s.brokerAccumulationPct ?? 0).toFixed(1)}%
                     </td>
                     <td className="py-3 px-3 font-mono text-foreground">
                       {s.tradePlan ? `${s.tradePlan.entryMin} - ${s.tradePlan.entryMax}` : "—"}

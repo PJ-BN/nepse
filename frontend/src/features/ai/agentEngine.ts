@@ -742,11 +742,11 @@ export function evaluateStock(
   const meta = COMPANY_CATALOG[upper] || { name: stock.name || upper, sector: stock.sector || "Equities" };
   const name = stock.name || meta.name;
   const sector = stock.sector || meta.sector;
-  const close = stock.close;
-  const changePct = stock.change_pct ?? 0;
-  const rsi = stock.rsi_14 ?? 50;
+  const close = Number(stock.close || 0);
+  const changePct = Number(stock.change_pct ?? 0);
+  const rsi = Number(stock.rsi_14 ?? 50);
   const rsiBullDiv = Boolean(stock.rsi_bull_div);
-  const accumPct = stock.top3_broker_accum_15d_pct ?? 25;
+  const accumPct = Number(stock.top3_broker_accum_15d_pct ?? 25);
   const smaPos = determineSmaPosition(close, stock.sma_20, stock.sma_50, stock.sma_200);
 
   // 52-Week Range position (0 to 100%)
@@ -955,8 +955,11 @@ export function scanMarketUniverse(
   announcements: RawAnnouncement[] = DEFAULT_ANNOUNCEMENTS,
   dividends: RawDividend[] = DEFAULT_DIVIDENDS
 ): AgentScanResult {
-  const dataset = stocks && stocks.length > 0 ? stocks : DEFAULT_UNIVERSE;
-  const evaluations = dataset.map((s) => evaluateStock(s, announcements, dividends));
+  const rawList = stocks && stocks.length > 0 ? stocks : DEFAULT_UNIVERSE;
+  const dataset = rawList.filter((s) => s && s.symbol && s.close != null && Number(s.close) > 0);
+  const evaluations = (dataset.length > 0 ? dataset : DEFAULT_UNIVERSE).map((s) =>
+    evaluateStock(s, announcements, dividends)
+  );
 
   // Sort by confidence score descending
   evaluations.sort((a, b) => b.confidenceScore - a.confidenceScore);
