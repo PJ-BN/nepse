@@ -140,9 +140,21 @@ class SqlIngestionRepository:
     async def daily_bars_on(self, day: date) -> list[DailyBar]:
         async with self._engine.connect() as conn:
             rows = await conn.execute(
-                select(Company.symbol, OhlcvDaily).join(Company, Company.id == OhlcvDaily.company_id)
+                select(
+                    Company.symbol,
+                    OhlcvDaily.open,
+                    OhlcvDaily.high,
+                    OhlcvDaily.low,
+                    OhlcvDaily.close,
+                    OhlcvDaily.prev_close,
+                    OhlcvDaily.volume,
+                    OhlcvDaily.turnover,
+                    OhlcvDaily.transactions,
+                ).join(Company, Company.id == OhlcvDaily.company_id)
                 .where(OhlcvDaily.trade_date == day)
             )
-            return [DailyBar(symbol, day, r.open, r.high, r.low, r.close, r.prev_close, r.volume, r.turnover, r.transactions)
-                    for symbol, r in ((row[0], row[1]) for row in rows)]
+            return [
+                DailyBar(r.symbol, day, r.open, r.high, r.low, r.close, r.prev_close, r.volume, r.turnover, r.transactions)
+                for r in rows
+            ]
 
