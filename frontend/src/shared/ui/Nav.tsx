@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
+import { DataSyncModal } from "@/features/sync";
 
 const LINKS = [
   ["/", "Dashboard"],
@@ -51,7 +52,10 @@ export function Nav() {
             </Link>
           ))}
         </div>
-        <ThemeToggle />
+        <div className="flex shrink-0 items-center gap-2">
+          <DataSyncModal />
+          <ThemeToggle />
+        </div>
       </nav>
     </header>
   );

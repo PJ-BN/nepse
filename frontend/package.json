@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "sync:eod": "docker compose run --rm worker python -m nepse.workers.main eod",
+    "sync:news": "docker compose run --rm worker python -m nepse.workers.main news",
+    "sync:all": "docker compose run --rm worker sh -c \"python -m nepse.workers.main eod && python -m nepse.workers.main news && python -m nepse.workers.main job macro_sebon && python -m nepse.workers.main job eod_crosscheck\""
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.5",
