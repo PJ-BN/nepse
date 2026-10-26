@@ -7,6 +7,7 @@ import { IndexStrip } from "./IndexStrip";
 import { MoversTable } from "./MoversTable";
 import { TurnoverTreemap } from "./TurnoverTreemap";
 import { AiMarketAnalysis } from "./AiMarketAnalysis";
+import { AiAgentWatchlistWidget } from "./AiAgentWatchlistWidget";
 
 export function Dashboard() {
   useLiveFeed();
@@ -203,6 +204,9 @@ export function Dashboard() {
 
       {/* AI Market Status & Market Confidence Analysis (On-Demand with Analyze Button) */}
       <AiMarketAnalysis />
+
+      {/* AI Trade & Watchlist Agent Widget */}
+      <AiAgentWatchlistWidget />
 
       {/* Top Movers 3-column Grid */}
       <section className="space-y-3">

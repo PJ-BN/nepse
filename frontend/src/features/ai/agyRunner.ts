@@ -1,5 +1,5 @@
 import { execFile } from "child_process";
-import type { ChartAiAnalysis, ChartAiArticle, ChartQuant, CompanyAiEvaluation, MarketAiAnalysis } from "./types";
+import type { ChartAiAnalysis, ChartAiArticle, ChartQuant, CompanyAiEvaluation, MarketAiAnalysis, NewsAiEvaluation } from "./types";
 import { computeChartQuant, deriveCall, quantDrawings, quantIndicators, quantNarrative } from "./chartQuant";
 
 function cleanJson(raw: string): string {
@@ -64,10 +64,12 @@ export async function runAgyPrompt(prompt: string, timeoutMs = 60000): Promise<s
 const companyCache = new Map<string, { data: CompanyAiEvaluation; timestamp: number }>();
 const marketCache = { data: null as MarketAiAnalysis | null, timestamp: 0 };
 const chartCache = new Map<string, { data: ChartAiAnalysis; timestamp: number }>();
+const newsCache = new Map<number, { data: NewsAiEvaluation; timestamp: number }>();
 
 const COMPANY_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 const MARKET_CACHE_TTL = 5 * 60 * 1000;   // 5 minutes
 const CHART_CACHE_TTL = 10 * 60 * 1000;   // 10 minutes
+const NEWS_CACHE_TTL = 15 * 60 * 1000;    // 15 minutes
 
 export type CandleRecord = { time: number; open: number; high: number; low: number; close: number; volume: number };
 
@@ -551,5 +553,160 @@ function generateMarketHeuristic(summary: Record<string, unknown>): MarketAiAnal
     summary: `NEPSE index stands at ${idx.value ?? "N/A"} (${chg >= 0 ? "+" : ""}${chg} pts) with ${score}% market confidence score.`,
     evaluated_at: new Date().toISOString(),
     source: "heuristic"
+  };
+}
+
+export async function evaluateNewsWithAgy(
+  newsItem: Record<string, unknown>,
+  forceRefresh = false
+): Promise<NewsAiEvaluation> {
+  const newsId = Number(newsItem.id || 0);
+
+  if (!forceRefresh && newsId > 0) {
+    const cached = newsCache.get(newsId);
+    if (cached && Date.now() - cached.timestamp < NEWS_CACHE_TTL) {
+      return cached.data;
+    }
+  }
+
+  const title = String(newsItem.title || "");
+  const summary = String(newsItem.summary || "");
+  const source = String(newsItem.source || "NEPSE Portal");
+  const category = String(newsItem.category || "company");
+  const symbols = Array.isArray(newsItem.symbols) ? (newsItem.symbols as string[]) : [];
+  const sector = String(newsItem.sector || "General Market");
+  const baselineRec = String(newsItem.action_recommendation || "HOLD & MONITOR");
+
+  const prompt = `You are a chief NEPSE (Nepal Stock Exchange) equity and regulatory research strategist.
+Analyze the investment impact of this breaking financial news or regulatory release:
+- Title: ${title}
+- Source: ${source}
+- Category: ${category}
+- Published Date: ${newsItem.published_on || "Recent"}
+- Mentioned Symbols: ${symbols.join(", ") || "None directly mentioned"}
+- Sector: ${sector}
+- Summary: ${summary}
+- Baseline Action Recommendation: ${baselineRec}
+
+CRITICAL REQUIREMENTS:
+1. Impact Stance: BULLISH, BEARISH, NEUTRAL, or WATCH.
+2. Impact Score: integer between -100 (heavily bearish) and +100 (heavily bullish).
+3. Action Recommendation: e.g. "ACCUMULATE ON DIPS", "BUY BEFORE BOOK CLOSURE", "AGGRESSIVE RISK-ON", "EXERCISE CAUTION", "HOLD & MONITOR", "APPLY RIGHTS".
+4. Actionable Playbook: 2-3 concise sentences detailing EXACTLY what the retail / institutional investor should do (entry tactics, price sensitivity, time to act, positioning).
+5. Target Horizon: "IMMEDIATE (1-5 DAYS)", "SHORT TERM (1-3 MO)", or "MEDIUM TERM (6-12 MO)".
+6. Affected Symbols and Affected Sectors.
+7. Catalysts & Risks to Watch.
+8. Investor Checklist: 3 bullet points with specific action checks for the user.
+
+Respond with ONLY a raw JSON object (strictly valid JSON, no markdown backticks, no explanations outside JSON):
+{
+  "news_id": ${newsId},
+  "title": "${title.replace(/"/g, '\\"')}",
+  "impact_stance": "BULLISH" | "BEARISH" | "NEUTRAL" | "WATCH",
+  "impact_score": number,
+  "action_recommendation": "string",
+  "actionable_playbook": "string",
+  "target_horizon": "string",
+  "affected_symbols": ["string"],
+  "affected_sectors": ["string"],
+  "catalysts": ["string", "string"],
+  "risks_to_watch": ["string", "string"],
+  "investor_checklist": ["string", "string", "string"]
+}`;
+
+  try {
+    const rawOut = await runAgyPrompt(prompt);
+    const cleaned = cleanJson(rawOut);
+    const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+
+    const result: NewsAiEvaluation = {
+      news_id: newsId,
+      title,
+      impact_stance: (parsed.impact_stance as NewsAiEvaluation["impact_stance"]) || "NEUTRAL",
+      impact_score: Number(parsed.impact_score ?? 0),
+      action_recommendation: String(parsed.action_recommendation || baselineRec),
+      actionable_playbook: String(parsed.actionable_playbook || summary),
+      target_horizon: String(parsed.target_horizon || "SHORT TERM (1-3 MO)"),
+      affected_symbols: Array.isArray(parsed.affected_symbols) ? parsed.affected_symbols.map(String) : symbols,
+      affected_sectors: Array.isArray(parsed.affected_sectors) ? parsed.affected_sectors.map(String) : [sector],
+      catalysts: Array.isArray(parsed.catalysts) ? parsed.catalysts.map(String) : [],
+      risks_to_watch: Array.isArray(parsed.risks_to_watch) ? parsed.risks_to_watch.map(String) : [],
+      investor_checklist: Array.isArray(parsed.investor_checklist) ? parsed.investor_checklist.map(String) : [],
+      analyzed_at: new Date().toISOString(),
+      source: "agy",
+    };
+
+    if (newsId > 0) {
+      newsCache.set(newsId, { data: result, timestamp: Date.now() });
+    }
+    return result;
+  } catch (err: unknown) {
+    console.warn(`AGY prompt failed for news ${newsId}, engaging analytical heuristic:`, err);
+    const fallback = generateNewsHeuristic(newsItem);
+    if (newsId > 0) {
+      newsCache.set(newsId, { data: fallback, timestamp: Date.now() });
+    }
+    return fallback;
+  }
+}
+
+function generateNewsHeuristic(item: Record<string, unknown>): NewsAiEvaluation {
+  const newsId = Number(item.id || 0);
+  const title = String(item.title || "NEPSE Bulletin");
+  const summary = String(item.summary || "");
+  const stance = (item.impact_stance as NewsAiEvaluation["impact_stance"]) || "NEUTRAL";
+  const score = Number(item.impact_score ?? 0);
+  const rec = String(item.action_recommendation || "HOLD & MONITOR");
+  const symbols = Array.isArray(item.symbols) ? (item.symbols as string[]) : [];
+  const sector = String(item.sector || "General Market");
+
+  const symLabel = symbols.length > 0 ? symbols.join(", ") : sector;
+
+  let playbook = "";
+  let horizon = "SHORT TERM (1-3 MO)";
+  const checklist: string[] = [];
+
+  const baseSummary = summary ? `${summary.trim()} ` : "";
+
+  if (stance === "BULLISH") {
+    playbook = `${baseSummary}Positive catalyst confirmed for ${symLabel}. Recommendation is to ${rec}. Target entry on slight dips or opening auction pullback; do not chase extended intraday spikes.`;
+    horizon = rec.includes("BOOK CLOSURE") ? "IMMEDIATE (1-5 DAYS)" : "SHORT TERM (1-3 MO)";
+    checklist.push(`Verify book closure or dividend entitlement dates for ${symLabel}`);
+    checklist.push("Confirm support levels on technical chart before placing limit orders");
+    checklist.push("Review company quarterly financial disclosures and NPL trend");
+  } else if (stance === "BEARISH") {
+    playbook = `${baseSummary}Adverse headwind or regulatory caution impacting ${symLabel}. Recommendation is to ${rec}. Avoid aggressive bottom-fishing until selling volume normalizes and support is established.`;
+    checklist.push(`Examine downside support levels for ${symLabel}`);
+    checklist.push("Tighten stop-loss or reduce margin loan exposure");
+    checklist.push("Wait for follow-up regulatory or board clarification");
+  } else {
+    playbook = `${baseSummary}Informative update for ${symLabel}. Recommendation is to HOLD & MONITOR. Impact is neutral to balanced; track secondary market response and volume before taking fresh positions.`;
+    checklist.push(`Monitor daily turnover and breadth in ${sector}`);
+    checklist.push("Check upcoming corporate announcements on ShareSansar / NEPSE");
+    checklist.push("Maintain balanced asset allocation");
+  }
+
+  return {
+    news_id: newsId,
+    title,
+    impact_stance: stance,
+    impact_score: score,
+    action_recommendation: rec,
+    actionable_playbook: playbook,
+    target_horizon: horizon,
+    affected_symbols: symbols,
+    affected_sectors: [sector],
+    catalysts: [
+      `Corporate and policy response for ${symLabel}`,
+      "Monetary liquidity and market interest rate trends",
+      "Next quarterly financial reporting cycle",
+    ],
+    risks_to_watch: [
+      "Broad market sentiment and turnover fluctuations",
+      "Regulatory adjustments by SEBON / NRB",
+    ],
+    investor_checklist: checklist,
+    analyzed_at: new Date().toISOString(),
+    source: "heuristic",
   };
 }

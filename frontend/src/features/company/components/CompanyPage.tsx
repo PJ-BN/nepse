@@ -9,6 +9,7 @@ import { Profile } from "./Profile";
 import { SectorFlags } from "./SectorFlags";
 import { ValuationCard } from "./ValuationCard";
 import { AiFundamentalCard } from "./AiFundamentalCard";
+import { CompanyNewsSection } from "@/features/news";
 
 export function CompanyPage({ symbol }: { symbol: string }) {
   const { data, error, isLoading } = useCompanyFull(symbol);
@@ -51,6 +52,9 @@ export function CompanyPage({ symbol }: { symbol: string }) {
         <ValuationCard v={data.valuation} symbol={symbol} />
         <SectorFlags flags={data.flags} metrics={data.sector_metrics} />
       </div>
+
+      {/* Company News & Actionable AI Impact */}
+      <CompanyNewsSection symbol={symbol} />
 
       <DepthPanel depth={data.depth} />
       <h2 className="font-bold text-base tracking-tight">Quarterly financials</h2>

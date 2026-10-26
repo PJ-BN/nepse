@@ -138,6 +138,14 @@ async def main(command: str | None, args: list[str]) -> None:
     if command == "verify-adjusted":  # [SYMBOL...] default: all active symbols
         log.info("verify-adjusted: %d symbols with breaches", await verify_adjusted_job(SqlIngestionRepository(engine), args or None))
         return
+    if command == "news":
+        from nepse.application.news.use_cases import ingest_news
+        from nepse.infrastructure.db.repositories.news import SqlNewsRepository
+        from nepse.infrastructure.upstream.news_sources import MultiSourceNewsAggregator
+        async with SessionLocal() as session:
+            count = await ingest_news(MultiSourceNewsAggregator(), SqlNewsRepository(session))
+        log.info("news ingested: %d", count)
+        return
     async with new_http_client() as http:
         source = NepseClient(http, redis, TokenSolver())
         store, repo = RedisLiveStore(redis), SqlIngestionRepository(engine)

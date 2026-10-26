@@ -7,8 +7,10 @@ import { ThemeToggle } from "./ThemeToggle";
 const LINKS = [
   ["/", "Dashboard"],
   ["/chart", "Chart"],
+  ["/watchlist", "Watchlist & Agent"],
   ["/floorsheet", "Floorsheet"],
   ["/company", "Companies"],
+  ["/news", "News"],
   ["/broker", "Brokers"],
   ["/screener", "Screener"],
   ["/simulator", "Simulator"],

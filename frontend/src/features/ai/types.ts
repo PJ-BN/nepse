@@ -53,6 +53,23 @@ export type ChartAiIndicator = {
   reason: string;
 };
 
+export type NewsAiEvaluation = {
+  news_id: number;
+  title: string;
+  impact_stance: "BULLISH" | "BEARISH" | "NEUTRAL" | "WATCH";
+  impact_score: number;
+  action_recommendation: string;
+  actionable_playbook: string;
+  target_horizon: string;
+  affected_symbols: string[];
+  affected_sectors: string[];
+  catalysts: string[];
+  risks_to_watch: string[];
+  investor_checklist: string[];
+  analyzed_at: string;
+  source: "agy" | "heuristic";
+};
+
 export type QuantLevel = {
   price: number;
   kind: "support" | "resistance";
