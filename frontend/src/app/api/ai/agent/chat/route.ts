@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { answerAgentQuery, DEFAULT_ANNOUNCEMENTS, DEFAULT_DIVIDENDS, DEFAULT_UNIVERSE, scanMarketUniverse } from "@/features/ai/agentEngine";
 import { answerQueryWithAgy } from "@/features/ai/agentAgyRunner";
+import { checkAiAuth, unauthorizedAiResponse } from "../../authCheck";
 
 export async function POST(req: NextRequest) {
+  if (!(await checkAiAuth(req))) {
+    return unauthorizedAiResponse();
+  }
+
   try {
     const body = await req.json().catch(() => ({}));
     const query = String(body.query || "").trim();

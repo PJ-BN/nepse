@@ -1,4 +1,4 @@
-import { getJson } from "@/shared/api/http";
+import { getJson, postJson } from "@/shared/api/http";
 import type { NewsAiEvaluation, NewsBriefing, NewsFeedResponse, NewsFilterState, NewsItem } from "./types";
 
 export async function fetchNews(filters: Partial<NewsFilterState> = {}): Promise<NewsFeedResponse> {
@@ -39,14 +39,8 @@ export async function fetchNewsDetail(id: number): Promise<NewsItem> {
 }
 
 export async function evaluateNewsAi(newsItem: NewsItem, forceRefresh = false): Promise<NewsAiEvaluation> {
-  const res = await fetch(`/api/ai/news/${newsItem.id}${forceRefresh ? "?refresh=true" : ""}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(newsItem),
-  });
-
-  if (!res.ok) {
-    throw new Error(`AI News Analysis failed: ${res.statusText}`);
-  }
-  return res.json() as Promise<NewsAiEvaluation>;
+  return postJson<NewsAiEvaluation>(
+    `/api/ai/news/${newsItem.id}${forceRefresh ? "?refresh=true" : ""}`,
+    newsItem
+  );
 }

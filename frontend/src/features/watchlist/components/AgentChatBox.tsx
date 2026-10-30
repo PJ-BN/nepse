@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/features/auth";
 import { sendAgentMessage } from "../api";
 import { StockCard } from "./StockCard";
 import type { AgentChatMessage, StockAgentEvaluation } from "@/features/ai/agentTypes";
@@ -21,6 +22,7 @@ const PROMPT_SUGGESTIONS = [
 ];
 
 export function AgentChatBox({ userWatchlistSymbols, isWatchlisted, onToggleWatchlist }: AgentChatBoxProps) {
+  const { isAuthenticated, openAuthModal } = useAuth();
   const [messages, setMessages] = useState<AgentChatMessage[]>([
     {
       id: "welcome",
@@ -34,6 +36,10 @@ export function AgentChatBox({ userWatchlistSymbols, isWatchlisted, onToggleWatc
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSend = async (queryText?: string) => {
+    if (!isAuthenticated) {
+      openAuthModal("login");
+      return;
+    }
     const q = (queryText ?? input).trim();
     if (!q || isLoading) return;
 
@@ -161,29 +167,45 @@ export function AgentChatBox({ userWatchlistSymbols, isWatchlisted, onToggleWatc
         ))}
       </div>
 
-      {/* Input Box */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleSend();
-        }}
-        className="flex items-center gap-2 border-t border-border/60 bg-card p-3"
-      >
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask the Agent (e.g. Which banking stock should I buy today? Is NABIL a buy or sell?)..."
-          disabled={isLoading}
-          className="flex-1 rounded-xl border border-input bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
-        />
-        <button
-          type="submit"
-          disabled={!input.trim() || isLoading}
-          className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground shadow-xs hover:opacity-90 disabled:opacity-50 transition-opacity"
+      {/* Input Box or Login Prompt */}
+      {!isAuthenticated ? (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/60 bg-muted/20 p-4">
+          <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
+            <span className="text-base">🔒</span>
+            <span>Sign in to converse with the NEPSE AI Agent and run interactive scans.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => openAuthModal("login")}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-xs hover:opacity-90 shrink-0 cursor-pointer"
+          >
+            <span>Sign In to Chat</span>
+          </button>
+        </div>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSend();
+          }}
+          className="flex items-center gap-2 border-t border-border/60 bg-card p-3"
         >
-          <span>Send</span>
-        </button>
-      </form>
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask the Agent (e.g. Which banking stock should I buy today? Is NABIL a buy or sell?)..."
+            disabled={isLoading}
+            className="flex-1 rounded-xl border border-input bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || isLoading}
+            className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground shadow-xs hover:opacity-90 disabled:opacity-50 transition-opacity"
+          >
+            <span>Send</span>
+          </button>
+        </form>
+      )}
     </div>
   );
 }

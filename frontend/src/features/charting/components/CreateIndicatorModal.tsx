@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { validateFormula } from "../formula";
 import {
   saveUserCustomIndicator,
@@ -77,7 +78,12 @@ export function CreateIndicatorModal({
   onClose: () => void;
   onCreated: (name: string, main: boolean) => void;
 }) {
+  const [mounted, setMounted] = useState(false);
   const [tab, setTab] = useState<"preset" | "formula">("preset");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Common inputs
   const [symbol, setSymbol] = useState("MY_MA");
@@ -101,7 +107,7 @@ export function CreateIndicatorModal({
     return validateFormula(formula);
   }, [tab, formula]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const handleSelectPreset = (kind: PresetKind) => {
     setPresetKind(kind);
@@ -164,14 +170,20 @@ export function CreateIndicatorModal({
     }
   };
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-indicator-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div className="flex max-h-[90vh] w-full max-w-xl flex-col rounded-lg border bg-background shadow-2xl">
+      <div
+        className="flex max-h-[90vh] w-full max-w-xl flex-col rounded-lg border bg-background shadow-2xl animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>
@@ -433,6 +445,7 @@ export function CreateIndicatorModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

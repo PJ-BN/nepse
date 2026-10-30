@@ -1,4 +1,11 @@
 /** Chart settings shared by every chart on the page, plus named layout templates built from them. */
+import { getAuthToken } from "@/features/auth/tokenStorage";
+import {
+  deleteCloudLayout,
+  fetchCloudLayouts,
+  saveCloudLayout,
+  syncCloudLayouts,
+} from "./chartDataApi";
 export type IndicatorParams = { calcParams?: number[]; colors?: string[] };
 
 export type ChartSettings = {
@@ -45,14 +52,44 @@ export const loadLayouts = (): Layouts => {
 export const saveLayout = (name: string, s: ChartSettings): Layouts => {
   const next = { ...loadLayouts(), [name]: s };
   write(LAYOUTS_KEY, next);
+  if (getAuthToken()) {
+    saveCloudLayout(name, s).catch((err) =>
+      console.warn(`Failed to sync layout ${name} to cloud:`, err)
+    );
+  }
   return next;
 };
+
 export const deleteLayout = (name: string): Layouts => {
   const rest = loadLayouts();
   delete rest[name];
   write(LAYOUTS_KEY, rest);
+  if (getAuthToken()) {
+    deleteCloudLayout(name).catch((err) =>
+      console.warn(`Failed to delete layout ${name} from cloud:`, err)
+    );
+  }
   return rest;
 };
+
+export async function syncCloudLayoutsOnAuth(): Promise<Layouts> {
+  if (!getAuthToken()) return loadLayouts();
+  try {
+    const cloud = await fetchCloudLayouts();
+    const local = loadLayouts();
+    if (Object.keys(cloud).length > 0) {
+      write(LAYOUTS_KEY, cloud);
+      return cloud;
+    } else if (Object.keys(local).length > 0) {
+      await syncCloudLayouts(local);
+      return local;
+    }
+    return {};
+  } catch (err) {
+    console.warn("Failed to sync cloud layouts:", err);
+    return loadLayouts();
+  }
+}
 
 type Line = { color: string };
 type Ind = { name: string; paneId: string; figures: { type?: string }[]; styles?: unknown };

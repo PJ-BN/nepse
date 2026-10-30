@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { WhaleToasts } from "@/features/live-feed";
-import { Nav, ActionLoaderProvider, QueryProvider } from "@/shared/ui";
+import { AuthProvider, AuthModal } from "@/features/auth";
+import { Sidebar, ActionLoaderProvider, QueryProvider } from "@/shared/ui";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,9 +38,16 @@ export default function RootLayout({
       >
         <QueryProvider>
           <ActionLoaderProvider>
-            <Nav />
-            {children}
-            <WhaleToasts />
+            <AuthProvider>
+              <div className="flex min-h-screen flex-col md:flex-row bg-background text-foreground">
+                <Sidebar />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  {children}
+                </div>
+              </div>
+              <WhaleToasts />
+              <AuthModal />
+            </AuthProvider>
           </ActionLoaderProvider>
         </QueryProvider>
       </body>

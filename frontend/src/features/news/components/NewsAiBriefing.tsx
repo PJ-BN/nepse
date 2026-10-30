@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatAiTimestamp } from "@/features/ai";
 import type { NewsBriefing } from "../types";
 
 interface Props {
@@ -12,7 +13,7 @@ interface Props {
 export function NewsAiBriefing({ briefing, isLoading, onRefresh }: Props) {
   const [isExpanded, setIsExpanded] = useState(true);
 
-  if (isLoading) {
+  if (isLoading && !briefing) {
     return (
       <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 shadow-xs animate-pulse space-y-3">
         <div className="h-5 w-48 bg-primary/20 rounded-md" />
@@ -26,9 +27,10 @@ export function NewsAiBriefing({ briefing, isLoading, onRefresh }: Props) {
 
   const isBull = briefing.market_stance === "BULLISH";
   const isBear = briefing.market_stance === "BEARISH";
+  const timeInfo = formatAiTimestamp(briefing.generated_at);
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card p-5 sm:p-6 shadow-xs transition-all">
+    <section className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card p-5 sm:p-6 shadow-xs transition-all space-y-3">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
@@ -58,14 +60,27 @@ export function NewsAiBriefing({ briefing, isLoading, onRefresh }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {/* Timestamp Badge */}
+          {briefing.generated_at && (
+            <div
+              className="flex items-center gap-1.5 rounded-lg bg-muted/60 border border-border/70 px-2.5 py-1 text-[11px] font-mono text-muted-foreground"
+              title={`Generated at: ${timeInfo.formatted}`}
+            >
+              <span className="text-primary font-bold">🕒 AI Generated:</span>
+              <span className="text-foreground font-semibold">{timeInfo.formatted}</span>
+              <span className="text-primary font-medium">({timeInfo.relative})</span>
+            </div>
+          )}
+
           {onRefresh && (
             <button
               onClick={onRefresh}
-              className="rounded-lg border px-2.5 py-1 text-xs font-semibold hover:bg-muted transition-colors cursor-pointer"
+              disabled={isLoading}
+              className="rounded-lg border px-2.5 py-1 text-xs font-semibold hover:bg-muted transition-colors cursor-pointer disabled:opacity-50"
               title="Refresh AI briefing"
             >
-              Refresh
+              {isLoading ? "Refreshing…" : "Refresh"}
             </button>
           )}
           <button
@@ -76,6 +91,16 @@ export function NewsAiBriefing({ briefing, isLoading, onRefresh }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Active Refresh Banner */}
+      {isLoading && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-primary/40 bg-primary/10 p-2.5 text-xs font-medium text-foreground animate-in fade-in duration-200">
+          <span className="flex h-2.5 w-2.5 rounded-full bg-primary animate-ping shrink-0" />
+          <span>
+            <strong>Synthesizing latest regulatory directives…</strong> Showing previously generated pulse ({timeInfo.formatted}) until complete.
+          </span>
+        </div>
+      )}
 
       {isExpanded && (
         <div className="mt-4 pt-4 border-t space-y-4">

@@ -11,7 +11,7 @@ from nepse.application.auth import use_cases
 from nepse.application.auth.ports import EmailTaken
 from nepse.infrastructure.db.models_portfolio import SqlUserRepo
 from nepse.infrastructure.db.session import SessionLocal
-from nepse.presentation.api.schemas.auth import LoginIn, RegisterIn, TokenOut
+from nepse.presentation.api.schemas.auth import LoginIn, RegisterIn, TokenOut, UserOut
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -50,6 +50,18 @@ def current_user_id(
         return use_cases.user_id_from_token(creds.credentials, secret)
     except use_cases.InvalidToken:
         raise HTTPException(401, "invalid or expired token", headers={"WWW-Authenticate": "Bearer"}) from None
+
+
+@router.get("/me", response_model=UserOut)
+async def me(
+    user_id: int = Depends(current_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> UserOut:
+    users = SqlUserRepo(session)
+    user = await users.get_by_id(user_id)
+    if user is None:
+        raise HTTPException(404, "user not found")
+    return UserOut(id=user.id, email=user.email, created_at=user.created_at)
 
 
 @router.post("/register", status_code=201, response_model=TokenOut)

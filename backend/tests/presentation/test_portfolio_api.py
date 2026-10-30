@@ -46,6 +46,10 @@ async def test_portfolio_flow():  # one test: the module-level engine/redis pool
             "access_token"]
         h = {"Authorization": f"Bearer {token}"}
 
+        me_res = await c.get("/api/v1/auth/me", headers=h)
+        assert me_res.status_code == 200
+        assert me_res.json()["email"] == email
+
         assert (await c.get("/api/v1/portfolio/holdings")).status_code == 401
         tomorrow = (date.today() + timedelta(days=2)).isoformat()
         bad = [

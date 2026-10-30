@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useAuth } from "@/features/auth";
 import type { NewsAiEvaluation, NewsItem } from "../types";
 import { NewsImpactModal } from "./NewsImpactModal";
 
 interface Props {
   news: NewsItem;
   onSelectSymbol?: (symbol: string) => void;
-  onAnalyze?: (item: NewsItem) => Promise<NewsAiEvaluation>;
+  onAnalyze?: (item: NewsItem, forceRefresh?: boolean) => Promise<NewsAiEvaluation>;
 }
 
 export function NewsCard({ news, onSelectSymbol, onAnalyze }: Props) {
+  const { isAuthenticated, openAuthModal } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [aiData, setAiData] = useState<NewsAiEvaluation | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -20,17 +22,34 @@ export function NewsCard({ news, onSelectSymbol, onAnalyze }: Props) {
   const isBear = news.impact_stance === "BEARISH";
 
   const handleOpenDeepDive = async () => {
+    if (!isAuthenticated) {
+      openAuthModal("login");
+      return;
+    }
     setModalOpen(true);
     if (!aiData && onAnalyze) {
       setAnalyzing(true);
       try {
-        const result = await onAnalyze(news);
+        const result = await onAnalyze(news, false);
         setAiData(result);
       } catch (err) {
         console.error("Deep dive error:", err);
       } finally {
         setAnalyzing(false);
       }
+    }
+  };
+
+  const handleReanalyze = async () => {
+    if (!onAnalyze) return;
+    setAnalyzing(true);
+    try {
+      const result = await onAnalyze(news, true);
+      setAiData(result);
+    } catch (err) {
+      console.error("Re-analyze error:", err);
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -172,8 +191,9 @@ export function NewsCard({ news, onSelectSymbol, onAnalyze }: Props) {
               type="button"
               onClick={handleOpenDeepDive}
               className="inline-flex items-center gap-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/25 px-3 py-1.5 text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              title={isAuthenticated ? "AI Deep-Dive" : "Sign in to unlock AI Deep-Dive"}
             >
-              <span>🤖</span>
+              <span>{isAuthenticated ? "🤖" : "🔒"}</span>
               <span>AI Deep-Dive</span>
             </button>
           </div>
@@ -187,6 +207,7 @@ export function NewsCard({ news, onSelectSymbol, onAnalyze }: Props) {
         newsItem={news}
         aiData={aiData}
         isLoading={analyzing}
+        onReanalyze={handleReanalyze}
       />
     </>
   );

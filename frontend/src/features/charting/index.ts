@@ -6,4 +6,5 @@ export { useChartAi } from "./hooks/useChartAi";
 export { fetchHistory, searchSymbols } from "./api";
 export { useHistory } from "./hooks/useHistory";
 export { RESOLUTIONS } from "./types";
+export * from "./chartDataApi";
 export type { Candle, PriceOverlay, Resolution, UdfHistory, UdfSearchItem } from "./types";

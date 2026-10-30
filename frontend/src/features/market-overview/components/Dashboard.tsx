@@ -8,6 +8,7 @@ import { MoversTable } from "./MoversTable";
 import { TurnoverTreemap } from "./TurnoverTreemap";
 import { AiMarketAnalysis } from "./AiMarketAnalysis";
 import { AiAgentWatchlistWidget } from "./AiAgentWatchlistWidget";
+import { PortfolioPulseWidget } from "@/features/portfolio";
 
 export function Dashboard() {
   useLiveFeed();
@@ -204,6 +205,9 @@ export function Dashboard() {
 
       {/* AI Market Status & Market Confidence Analysis (On-Demand with Analyze Button) */}
       <AiMarketAnalysis />
+
+      {/* Portfolio Pulse & AI Advisor Widget */}
+      <PortfolioPulseWidget />
 
       {/* AI Trade & Watchlist Agent Widget */}
       <AiAgentWatchlistWidget />

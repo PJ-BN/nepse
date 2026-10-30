@@ -17,6 +17,7 @@ import { ReplayBar } from "./ReplayBar";
 import { SymbolSearch } from "./SymbolSearch";
 import { AiChartArticle } from "./AiChartArticle";
 import { useActionLoader } from "@/shared/ui";
+import { useAuth } from "@/features/auth";
 
 const NO_CANDLES: Candle[] = [];
 
@@ -75,10 +76,21 @@ export function ChartView({
   );
   const mine = useMemo(() => alerts.filter((a) => a.symbol === symbol), [alerts, symbol]);
 
+  // Reset AI analysis panel when switching symbols so AI never runs or opens by itself
+  useEffect(() => {
+    setShowAiAnalysis(false);
+  }, [symbol]);
+
   const ai = useChartAi(symbol, resolution, full, chart, onApplyIndicators);
   const { withLoader } = useActionLoader();
+  const { isAuthenticated, openAuthModal } = useAuth();
 
   const handleToggleAiAnalysis = async () => {
+    if (!isAuthenticated) {
+      openAuthModal("login");
+      return;
+    }
+
     if (showAiAnalysis) {
       setShowAiAnalysis(false);
       return;
@@ -304,11 +316,16 @@ export function ChartView({
                 ? "border-primary bg-primary text-primary-foreground shadow-sm"
                 : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
             }`}
-            title="AI Technical Chart Analysis powered by AGY"
+            title={isAuthenticated ? "AI Technical Chart Analysis powered by AGY" : "Sign in to unlock AI Technical Analysis"}
           >
-            <span>✨</span>
+            <span>{isAuthenticated ? "✨" : "🔒"}</span>
             <span>AI Technical Analysis</span>
-            {ai.data && (
+            {!isAuthenticated && (
+              <span className="rounded bg-primary/20 px-1 py-0.2 text-[9px] font-bold uppercase">
+                Sign in
+              </span>
+            )}
+            {isAuthenticated && ai.data && (
               <span className="rounded bg-black/20 dark:bg-white/20 px-1 py-0.2 text-[9px] font-extrabold uppercase">
                 {ai.data.stance}
               </span>

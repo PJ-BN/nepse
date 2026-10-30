@@ -1,4 +1,6 @@
 import type { Chart, OverlayCreate } from "klinecharts";
+import { getAuthToken } from "@/features/auth/tokenStorage";
+import { fetchCloudDrawings, saveCloudDrawings } from "./chartDataApi";
 
 /** `tf` is the timeframe a drawing belongs to, or ALL_TF when it shows on every timeframe. */
 export type Drawing = Pick<OverlayCreate, "name" | "points" | "lock" | "mode" | "styles" | "extendData"> & { tf?: string };
@@ -40,12 +42,56 @@ export const mergeDrawings = (stored: Drawing[], tf: string, shown: Drawing[]): 
   ...shown,
 ];
 
+// Debounce timer map per symbol to avoid spamming the cloud DB while dragging overlays
+const debounceTimers = new Map<string, NodeJS.Timeout>();
+
+function queueCloudSave(symbol: string, allDrawings: Drawing[]) {
+  if (typeof window === "undefined") return;
+  if (!getAuthToken()) return;
+
+  const existingTimer = debounceTimers.get(symbol);
+  if (existingTimer) clearTimeout(existingTimer);
+
+  const timer = setTimeout(() => {
+    debounceTimers.delete(symbol);
+    saveCloudDrawings(symbol, allDrawings).catch((err) =>
+      console.warn(`Failed to sync drawings for ${symbol} to cloud:`, err)
+    );
+  }, 1000);
+
+  debounceTimers.set(symbol, timer);
+}
+
 export function saveDrawings(symbol: string, tf: string, shown: Drawing[]) {
   if (!symbol) return;
+  const merged = mergeDrawings(loadStored(symbol), tf, shown);
   try {
-    localStorage.setItem(key(symbol), JSON.stringify(mergeDrawings(loadStored(symbol), tf, shown)));
+    localStorage.setItem(key(symbol), JSON.stringify(merged));
   } catch {
-    // storage unavailable (private window, quota) — drawings just won't persist
+    // storage unavailable (private window, quota) — drawings just won't persist locally
+  }
+  queueCloudSave(symbol, merged);
+}
+
+/** Sync drawings with cloud PostgreSQL database when authenticated */
+export async function syncCloudDrawings(symbol: string): Promise<Drawing[]> {
+  if (!symbol || !getAuthToken()) return loadStored(symbol);
+  try {
+    const cloudDrawings = await fetchCloudDrawings(symbol);
+    const localDrawings = loadStored(symbol);
+
+    if (cloudDrawings.length > 0) {
+      localStorage.setItem(key(symbol), JSON.stringify(cloudDrawings));
+      return cloudDrawings;
+    } else if (localDrawings.length > 0) {
+      // Migrate local drawings to cloud
+      await saveCloudDrawings(symbol, localDrawings);
+      return localDrawings;
+    }
+    return [];
+  } catch (err) {
+    console.warn(`Cloud drawing sync error for ${symbol}:`, err);
+    return loadStored(symbol);
   }
 }
 

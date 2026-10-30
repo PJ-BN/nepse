@@ -1,5 +1,6 @@
 "use client";
 
+import { formatAiTimestamp } from "@/features/ai";
 import type { ChartAiAnalysis, ChartQuant } from "@/features/ai/types";
 
 export function AiChartArticle({
@@ -59,6 +60,7 @@ export function AiChartArticle({
   };
 
   const theme = stanceThemes[analysis.stance] || stanceThemes.BULLISH;
+  const timeInfo = formatAiTimestamp(analysis.evaluated_at);
 
   return (
     <article className="mt-4 rounded-xl border border-border/80 bg-gradient-to-b from-card to-card/60 p-5 shadow-sm space-y-5">
@@ -80,9 +82,15 @@ export function AiChartArticle({
           <h2 className="text-lg font-extrabold tracking-tight text-foreground sm:text-xl">
             {analysis.title}
           </h2>
-          <p className="text-xs text-muted-foreground">
-            Technically evaluated {new Date(analysis.evaluated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · AI Confidence Score: {analysis.confidence_score}%
-          </p>
+          <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1 font-mono">
+              <span className="text-primary font-bold">🕒 AI Generated:</span>
+              <span className="text-foreground font-semibold">{timeInfo.formatted}</span>
+              <span className="text-primary font-medium">({timeInfo.relative})</span>
+            </span>
+            <span>·</span>
+            <span>AI Confidence: <strong className="text-foreground">{analysis.confidence_score}%</strong></span>
+          </div>
         </div>
 
         {/* Action Controls */}
@@ -121,6 +129,21 @@ export function AiChartArticle({
           </button>
         </div>
       </div>
+
+      {/* Active Refreshing Alert Banner (keeps previous data displayed while refreshing!) */}
+      {isRefreshing && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-primary/40 bg-primary/10 p-3 text-xs font-medium text-foreground animate-in fade-in duration-200">
+          <span className="flex h-2.5 w-2.5 rounded-full bg-primary animate-ping shrink-0" />
+          <div className="flex-1 flex flex-wrap items-center justify-between gap-1">
+            <span>
+              <strong>Updating Technical Analysis with AGY…</strong> Showing previous analysis until fresh calculation completes.
+            </span>
+            <span className="text-[11px] font-mono text-muted-foreground">
+              Previous run: {timeInfo.formatted}
+            </span>
+          </div>
+        </div>
+      )}
 
       {analysis.article.executive_summary && (
         <p className="rounded-lg border-l-4 border-primary bg-primary/5 px-4 py-3 text-sm leading-relaxed text-foreground">

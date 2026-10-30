@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   fetchSyncStatus,
   triggerSyncAll,
@@ -13,11 +14,16 @@ import type { SyncResult, SyncStatus } from "../types";
 
 export function DataSyncModal() {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [activeJob, setActiveJob] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<SyncResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"actions" | "terminal">("actions");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const refreshStatus = async () => {
     try {
@@ -31,6 +37,18 @@ export function DataSyncModal() {
   useEffect(() => {
     if (isOpen) {
       refreshStatus();
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          setIsOpen(false);
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.body.style.overflow = prevOverflow;
+        window.removeEventListener("keydown", handleKeyDown);
+      };
     }
   }, [isOpen]);
 
@@ -90,11 +108,22 @@ export function DataSyncModal() {
       </button>
 
       {/* Modal Dialog */}
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="relative w-full max-w-2xl rounded-2xl border border-border bg-background shadow-2xl overflow-hidden">
+      {isOpen && mounted && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="data-sync-title"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 sm:p-6 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsOpen(false);
+          }}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border border-border bg-background shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-border px-6 py-4 bg-muted/20">
+            <div className="shrink-0 flex items-center justify-between border-b border-border px-6 py-4 bg-muted/20">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -105,7 +134,7 @@ export function DataSyncModal() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold text-foreground">Data Ingestion & Sync Center</h3>
+                  <h3 id="data-sync-title" className="text-base font-semibold text-foreground">Data Ingestion & Sync Center</h3>
                   <p className="text-xs text-muted-foreground">Pull latest closing figures, floorsheet, news & macro filings</p>
                 </div>
               </div>
@@ -113,7 +142,7 @@ export function DataSyncModal() {
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                 aria-label="Close"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -124,7 +153,7 @@ export function DataSyncModal() {
             </div>
 
             {/* Current Status Banner */}
-            <div className="p-6 space-y-5">
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-xl border border-border/70 bg-card p-3.5 text-xs shadow-xs">
                 <div>
                   <span className="text-muted-foreground block text-[11px]">Latest EOD Date</span>
@@ -386,7 +415,7 @@ export function DataSyncModal() {
             </div>
 
             {/* Modal Footer */}
-            <div className="border-t border-border px-6 py-3 bg-muted/20 flex items-center justify-between text-xs text-muted-foreground">
+            <div className="shrink-0 border-t border-border px-6 py-3 bg-muted/20 flex items-center justify-between text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
                 Auto-scheduler running daily at 15:15 NPT
@@ -400,7 +429,8 @@ export function DataSyncModal() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

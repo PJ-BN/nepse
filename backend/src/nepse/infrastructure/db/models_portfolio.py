@@ -44,7 +44,11 @@ class SqlUserRepo:
 
     async def get_by_email(self, email: str) -> User | None:
         row = await self.session.scalar(select(UserRow).where(UserRow.email == email))
-        return User(row.id, row.email, row.password_hash) if row else None
+        return User(row.id, row.email, row.password_hash, row.created_at) if row else None
+
+    async def get_by_id(self, user_id: int) -> User | None:
+        row = await self.session.scalar(select(UserRow).where(UserRow.id == user_id))
+        return User(row.id, row.email, row.password_hash, row.created_at) if row else None
 
     async def add(self, email: str, password_hash: str) -> int:
         row = UserRow(email=email, password_hash=password_hash)

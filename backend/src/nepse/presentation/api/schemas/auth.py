@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, Field
 
 # Deliberately loose (no email-validator dependency): one @, a dot in the domain, no spaces.
@@ -17,3 +18,10 @@ class LoginIn(BaseModel):
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class UserOut(BaseModel):
+    id: int
+    email: str
+    created_at: datetime | None = None
+

@@ -10,7 +10,7 @@ export function useMarketAi(options?: { enabled?: boolean }) {
     queryFn: () => fetchMarketAiAnalysis(),
     staleTime: 5 * 60 * 1000, // 5 minutes cache
     refetchOnWindowFocus: false,
-    enabled: options?.enabled ?? false,
+    enabled: options?.enabled ?? true,
   });
 
   const refreshMutation = useMutation({

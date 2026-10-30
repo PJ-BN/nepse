@@ -25,7 +25,7 @@ export function useChartAi(
     queryKey,
     queryFn: () => fetchChartAiAnalysis(upper, resolution, candles),
     staleTime: 10 * 60 * 1000,
-    enabled: Boolean(symbol) && candles.length > 5,
+    enabled: Boolean(symbol), // Automatically load previously generated analysis from DB!
     refetchOnWindowFocus: false,
   });
 

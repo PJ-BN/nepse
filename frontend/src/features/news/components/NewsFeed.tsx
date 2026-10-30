@@ -2,7 +2,8 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAnalyzeNews, useNews, useNewsBriefing } from "../hooks/useNews";
+import { useNews, useNewsBriefing } from "../hooks/useNews";
+import { evaluateNewsAi } from "../api";
 import type { NewsCategory, NewsItem } from "../types";
 import { NewsAiBriefing } from "./NewsAiBriefing";
 import { NewsCard } from "./NewsCard";
@@ -54,7 +55,6 @@ export function NewsFeed() {
   });
 
   const { data: briefing, isLoading: briefingLoading, refetch: refetchBriefing } = useNewsBriefing();
-  const analyzeMutation = useAnalyzeNews();
 
   const handleSelectSymbol = (sym: string) => {
     setSymbol(sym);
@@ -267,7 +267,7 @@ export function NewsFeed() {
               key={newsItem.id || newsItem.source_url}
               news={newsItem}
               onSelectSymbol={handleSelectSymbol}
-              onAnalyze={(item) => analyzeMutation.mutateAsync(item)}
+              onAnalyze={(item, forceRefresh) => evaluateNewsAi(item, forceRefresh ?? false)}
             />
           ))}
         </div>

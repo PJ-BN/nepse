@@ -2,8 +2,8 @@
 
 import type { Chart, IndicatorCreate, KLineData, OverlayCreate, OverlayMode } from "klinecharts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ALL_TF, extendOf, stripId, loadDrawings, saveDrawings, snapshot, type Drawing } from "../drawings";
-import { applyParams, DEFAULT_SETTINGS, deleteLayout, loadLayouts, loadSettings, saveLayout, saveSettings, type ChartSettings, type IndicatorParams } from "../settings";
+import { ALL_TF, extendOf, stripId, loadDrawings, saveDrawings, syncCloudDrawings, snapshot, type Drawing } from "../drawings";
+import { applyParams, DEFAULT_SETTINGS, deleteLayout, loadLayouts, loadSettings, saveLayout, saveSettings, syncCloudLayoutsOnAuth, type ChartSettings, type IndicatorParams } from "../settings";
 import { History } from "../undo";
 import { DEFAULT_INDICATORS, type Candle, type Indicator, type PriceOverlay } from "../types";
 import { isMainIndicator, registerIndicators } from "../klines/indicators";
@@ -266,6 +266,20 @@ export function NepseTradingChart({
     render(loadDrawings(symbol, tf));
     history.current.reset(read());
     setTick((t) => t + 1);
+
+    // If authenticated, sync with PostgreSQL database in background
+    let active = true;
+    syncCloudDrawings(symbol).then((allDrawings) => {
+      if (!active || !chart.current) return;
+      const relevant = allDrawings.filter((d) => d.tf === tf || d.tf === ALL_TF);
+      render(relevant);
+      history.current.reset(read());
+      setTick((t) => t + 1);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [symbol, tf, render, ready]);
 
   // Saved settings (indicator params, chart type, scale) are read after mount so SSR markup matches.
@@ -274,6 +288,9 @@ export function NepseTradingChart({
     settingsRef.current = s;
     setSettings(s);
     setLayouts(loadLayouts());
+    syncCloudLayoutsOnAuth().then((syncedLayouts) => {
+      setLayouts(syncedLayouts);
+    });
   }, []);
 
   useEffect(() => {

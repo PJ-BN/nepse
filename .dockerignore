@@ -1,0 +1,17 @@
+.git
+.github
+.claude
+backend
+node_modules
+*/node_modules
+.next
+*/.next
+.venv
+*/.venv
+__pycache__
+*.pyc
+.pytest_cache
+.import_linter_cache
+*.log
+.env
+.env.local

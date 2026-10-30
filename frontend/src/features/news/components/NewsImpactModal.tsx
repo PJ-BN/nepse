@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { formatAiTimestamp } from "@/features/ai";
+import { useAuth } from "@/features/auth";
 import type { NewsAiEvaluation, NewsItem } from "../types";
 
 interface Props {
@@ -9,9 +12,17 @@ interface Props {
   newsItem: NewsItem | null;
   aiData: NewsAiEvaluation | null;
   isLoading: boolean;
+  onReanalyze?: () => void;
 }
 
-export function NewsImpactModal({ isOpen, onClose, newsItem, aiData, isLoading }: Props) {
+export function NewsImpactModal({ isOpen, onClose, newsItem, aiData, isLoading, onReanalyze }: Props) {
+  const { isAuthenticated, openAuthModal } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -26,7 +37,7 @@ export function NewsImpactModal({ isOpen, onClose, newsItem, aiData, isLoading }
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen || !newsItem) return null;
+  if (!isOpen || !newsItem || !mounted) return null;
 
   const stance = aiData?.impact_stance || newsItem.impact_stance;
   const score = aiData?.impact_score ?? newsItem.impact_score;
@@ -35,9 +46,14 @@ export function NewsImpactModal({ isOpen, onClose, newsItem, aiData, isLoading }
 
   const isBull = stance === "BULLISH";
   const isBear = stance === "BEARISH";
+  const timeInfo = formatAiTimestamp(aiData?.analyzed_at || newsItem.created_at);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+    >
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" onClick={onClose} />
 
@@ -45,7 +61,7 @@ export function NewsImpactModal({ isOpen, onClose, newsItem, aiData, isLoading }
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border bg-card p-6 shadow-2xl transition-all sm:p-7">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 border-b pb-4">
-          <div className="space-y-1">
+          <div className="space-y-1.5 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${
@@ -63,23 +79,61 @@ export function NewsImpactModal({ isOpen, onClose, newsItem, aiData, isLoading }
               </span>
               <span className="text-xs text-muted-foreground">{newsItem.source}</span>
             </div>
+
             <h3 className="text-lg font-bold text-foreground leading-snug pt-1">{newsItem.title}</h3>
+
+            {/* Timestamp Badge */}
+            <div className="flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground pt-1">
+              <span className="text-primary font-bold">🕒 AI Generated:</span>
+              <span className="text-foreground font-semibold">{timeInfo.formatted}</span>
+              <span className="text-primary font-medium">({timeInfo.relative})</span>
+            </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            aria-label="Close dialog"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {onReanalyze && (
+              <button
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    openAuthModal("login");
+                    return;
+                  }
+                  onReanalyze();
+                }}
+                disabled={isLoading}
+                className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-accent transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1"
+                title={isAuthenticated ? "Re-run deep impact analysis with AGY" : "Sign in to re-analyze"}
+              >
+                <span className={isLoading ? "animate-spin" : ""}>🔄</span>
+                <span className="hidden sm:inline">{isLoading ? "Analyzing…" : "Re-analyze"}</span>
+              </button>
+            )}
+
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+              aria-label="Close dialog"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {/* Active Refresh Banner (keeps previous data displayed while refreshing!) */}
+        {isLoading && aiData && (
+          <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-primary/40 bg-primary/10 p-2.5 text-xs font-medium text-foreground animate-in fade-in duration-200">
+            <span className="flex h-2.5 w-2.5 rounded-full bg-primary animate-ping shrink-0" />
+            <span>
+              <strong>Re-analyzing news impact with AGY…</strong> Showing previous analysis ({timeInfo.formatted}) until complete.
+            </span>
+          </div>
+        )}
 
         {/* Content Body */}
         <div className="space-y-6 pt-5">
-          {isLoading ? (
+          {isLoading && !aiData ? (
             <div className="flex flex-col items-center justify-center py-12 space-y-3">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
               <p className="text-sm font-medium text-muted-foreground">Running AI Investment Impact Engine…</p>
@@ -218,6 +272,7 @@ export function NewsImpactModal({ isOpen, onClose, newsItem, aiData, isLoading }
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

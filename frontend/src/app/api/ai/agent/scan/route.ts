@@ -9,12 +9,11 @@ import {
   scanMarketUniverse,
 } from "@/features/ai/agentEngine";
 import { enhanceBriefingWithAgy } from "@/features/ai/agentAgyRunner";
+import { getStoredAiEvaluation, saveStoredAiEvaluation } from "@/features/ai/dbStorage";
 import type { AgentScanResult } from "@/features/ai/agentTypes";
+import { checkAiAuth, unauthorizedAiResponse } from "../../authCheck";
 
 const API_BASE = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-let cachedResult: { data: AgentScanResult; timestamp: number } | null = null;
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 async function fetchScreenerStocks(): Promise<RawStockSnapshot[]> {
   try {
@@ -71,11 +70,19 @@ async function fetchDividends(): Promise<RawDividend[]> {
 }
 
 export async function GET(req: NextRequest) {
+  if (!(await checkAiAuth(req))) {
+    return unauthorizedAiResponse();
+  }
+
   try {
     const forceRefresh = req.nextUrl.searchParams.get("refresh") === "true";
 
-    if (!forceRefresh && cachedResult && Date.now() - cachedResult.timestamp < CACHE_TTL) {
-      return NextResponse.json(cachedResult.data);
+    // 1. If not forcing refresh, return stored scan from database immediately
+    if (!forceRefresh) {
+      const stored = await getStoredAiEvaluation<AgentScanResult>("agent_scan", "LATEST");
+      if (stored) {
+        return NextResponse.json(stored);
+      }
     }
 
     const [stocks, announcements, dividends] = await Promise.all([
@@ -95,16 +102,30 @@ export async function GET(req: NextRequest) {
       scan.source = "heuristic";
     }
 
-    cachedResult = {
-      data: scan,
-      timestamp: Date.now(),
-    };
+    // 2. Persist newly generated agent scan into PostgreSQL database
+    await saveStoredAiEvaluation(
+      "agent_scan",
+      "LATEST",
+      scan,
+      scan.source || "agy",
+      scan.briefing?.evaluatedAt
+    );
 
     return NextResponse.json(scan);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal server error";
     console.error("Agent scan error:", message);
-    // Return fallback scan
+
+    // Fall back to stored scan in database if available
+    try {
+      const stored = await getStoredAiEvaluation<AgentScanResult>("agent_scan", "LATEST");
+      if (stored) {
+        return NextResponse.json(stored);
+      }
+    } catch {
+      // ignore
+    }
+
     const fallbackScan = scanMarketUniverse(DEFAULT_UNIVERSE, DEFAULT_ANNOUNCEMENTS, DEFAULT_DIVIDENDS);
     return NextResponse.json(fallbackScan);
   }

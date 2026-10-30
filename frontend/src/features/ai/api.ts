@@ -1,8 +1,20 @@
+import { getAuthToken } from "@/features/auth/tokenStorage";
 import type { ChartAiAnalysis, CompanyAiEvaluation, MarketAiAnalysis } from "./types";
+
+function getHeaders(extra?: HeadersInit): Headers {
+  const headers = new Headers(extra);
+  const token = getAuthToken();
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  return headers;
+}
 
 export async function fetchCompanyAiEvaluation(symbol: string, refresh = false): Promise<CompanyAiEvaluation> {
   const query = refresh ? "?refresh=true" : "";
-  const res = await fetch(`/api/ai/company/${encodeURIComponent(symbol.toUpperCase())}${query}`);
+  const res = await fetch(`/api/ai/company/${encodeURIComponent(symbol.toUpperCase())}${query}`, {
+    headers: getHeaders(),
+  });
   if (!res.ok) {
     throw new Error(`Failed to load AI evaluation for ${symbol} (${res.status})`);
   }
@@ -11,7 +23,9 @@ export async function fetchCompanyAiEvaluation(symbol: string, refresh = false):
 
 export async function fetchMarketAiAnalysis(refresh = false): Promise<MarketAiAnalysis> {
   const query = refresh ? "?refresh=true" : "";
-  const res = await fetch(`/api/ai/market${query}`);
+  const res = await fetch(`/api/ai/market${query}`, {
+    headers: getHeaders(),
+  });
   if (!res.ok) {
     throw new Error(`Failed to load AI market analysis (${res.status})`);
   }
@@ -31,11 +45,13 @@ export async function fetchChartAiAnalysis(
   if (candles && candles.length > 0) {
     res = await fetch(`/api/ai/chart/${upper}${query}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ resolution, refresh, candles }),
     });
   } else {
-    res = await fetch(`/api/ai/chart/${upper}?resolution=${resolution}${refresh ? "&refresh=true" : ""}`);
+    res = await fetch(`/api/ai/chart/${upper}?resolution=${resolution}${refresh ? "&refresh=true" : ""}`, {
+      headers: getHeaders(),
+    });
   }
 
   if (!res.ok) {

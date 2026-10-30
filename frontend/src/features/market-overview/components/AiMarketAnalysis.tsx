@@ -1,83 +1,64 @@
 "use client";
 
 import { useState } from "react";
-import { useMarketAi } from "@/features/ai";
+import { formatAiTimestamp, useMarketAi } from "@/features/ai";
+import { useAuth } from "@/features/auth";
 
 export function AiMarketAnalysis() {
-  const [hasRequested, setHasRequested] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isAuthenticated, openAuthModal } = useAuth();
 
   const { data, isLoading, isFetching, isError, error, refreshAi, isRefreshing, refetch } = useMarketAi({
-    enabled: hasRequested,
+    enabled: isAuthenticated,
   });
 
-  const handleAnalyze = () => {
-    setHasRequested(true);
-    refetch();
-  };
-
-  const isAnalyzing = (hasRequested && (isLoading || isFetching)) && !data;
-
-  // Unanalyzed State: Don't analyze automatically! Show a stylish call-to-action button
-  if (!data && !isAnalyzing && !isError) {
+  if (!isAuthenticated) {
     return (
-      <section className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/10 via-card to-card/90 p-5 shadow-sm transition-all duration-300">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/20 text-primary border border-primary/30 text-sm shadow-2xs">
-                ✨
-              </span>
-              <h2 className="text-base font-bold tracking-tight text-foreground flex items-center gap-2">
-                NEPSE AI Market Intelligence
-                <span className="rounded-full bg-primary/15 text-primary border border-primary/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                  AGY AI
+      <section className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/10 via-card to-card p-5 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/20 text-primary text-lg">
+              🔒
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-foreground">AI Market Dynamics & Macro Read</h2>
+                <span className="rounded-full bg-primary/15 border border-primary/25 px-2 py-0.5 text-[10px] font-bold text-primary uppercase">
+                  Members Only
                 </span>
-              </h2>
-            </div>
-            <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
-              Generate an on-demand real-time AI synthesis of market breadth, liquidity turnover, institutional momentum, and actionable tactical bias.
-            </p>
-            <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-muted-foreground">
-              <span className="inline-flex items-center gap-1 rounded-md bg-muted/30 border border-border/50 px-2 py-0.5 font-medium">
-                <span className="text-emerald-500 font-bold">▲</span> Breadth Dynamics
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-md bg-muted/30 border border-border/50 px-2 py-0.5 font-medium">
-                <span className="text-blue-500 font-bold">⚡</span> Order Flow & Turnover
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-md bg-muted/30 border border-border/50 px-2 py-0.5 font-medium">
-                <span className="text-amber-500 font-bold">🎯</span> Tactical Positioning
-              </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Sign in to unlock autonomous institutional market regime analysis, liquidity flow scans, and tactical playbooks.
+              </p>
             </div>
           </div>
-
-          <div className="shrink-0">
-            <button
-              onClick={handleAnalyze}
-              className="group inline-flex items-center justify-center gap-2.5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-95 hover:shadow-md transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <span className="transition-transform group-hover:rotate-12">✨</span>
-              <span>Analyze Market with AI</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => openAuthModal("login")}
+            className="shrink-0 rounded-xl bg-accent px-4 py-2 text-xs font-bold text-background transition-opacity hover:opacity-90 cursor-pointer shadow-xs"
+          >
+            Sign In to Unlock
+          </button>
         </div>
       </section>
     );
   }
 
-  // Analyzing / Loading State
-  if (isAnalyzing) {
+  const isInitialLoading = (isLoading || isFetching) && !data;
+
+  // Initial Loading State (when no previous evaluation exists in DB)
+  if (isInitialLoading) {
     return (
       <section className="rounded-2xl border border-primary/30 bg-card/80 p-5 shadow-sm space-y-4 animate-in fade-in duration-300">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
           <div className="flex items-center gap-2.5">
             <span className="flex h-3 w-3 animate-ping rounded-full bg-primary" />
             <h2 className="text-sm font-bold tracking-tight text-foreground">
-              Analyzing NEPSE Market Dynamics with AGY AI…
+              Loading NEPSE Market AI Dynamics…
             </h2>
           </div>
           <span className="text-xs text-muted-foreground animate-pulse font-mono">
-            Scanning order book, liquidity & breadth momentum…
+            Fetching latest market synthesis from database…
           </span>
         </div>
 
@@ -91,17 +72,17 @@ export function AiMarketAnalysis() {
     );
   }
 
-  // Error State
-  if (isError || !data) {
+  // Error State (when failed and no data exists)
+  if ((isError || !data) && !isRefreshing) {
     return (
       <section className="rounded-2xl border border-rose-500/25 bg-rose-500/5 p-4 text-xs">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="text-rose-700 dark:text-rose-400 font-medium">
-            Could not complete AI market analysis: {error ? error.message : "Unavailable"}
+            Could not load AI market analysis: {error ? error.message : "Unavailable"}
           </span>
           <button
-            onClick={() => handleAnalyze()}
-            className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-500/20 transition-colors"
+            onClick={() => refetch()}
+            className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-500/20 transition-colors cursor-pointer"
           >
             Retry Scan
           </button>
@@ -109,6 +90,8 @@ export function AiMarketAnalysis() {
       </section>
     );
   }
+
+  if (!data) return null;
 
   const statusColors: Record<string, { bg: string; text: string; border: string }> = {
     BULLISH: { bg: "bg-emerald-500/10 dark:bg-emerald-500/15", text: "text-emerald-700 dark:text-emerald-400", border: "border-emerald-500/30" },
@@ -127,7 +110,9 @@ export function AiMarketAnalysis() {
       ? "bg-amber-500"
       : "bg-rose-600";
 
-  // Compact / Collapsed state if user prefers uncluttered dashboard
+  const timeInfo = formatAiTimestamp(data.evaluated_at);
+
+  // Compact / Collapsed state
   if (isCollapsed) {
     return (
       <section className="rounded-2xl border border-border/80 bg-card p-3.5 shadow-xs transition-all">
@@ -143,20 +128,22 @@ export function AiMarketAnalysis() {
             <span className="text-xs text-muted-foreground font-medium">
               Confidence: <strong className="text-foreground">{data.confidence_score}% ({data.confidence_level})</strong>
             </span>
-            <span className="hidden md:inline text-xs text-muted-foreground">· Sentiment: {data.sentiment}</span>
+            <span className="text-[11px] font-mono text-muted-foreground hidden md:inline">
+              🕒 {timeInfo.full}
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsCollapsed(false)}
-              className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-accent transition-colors"
+              className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-accent transition-colors cursor-pointer"
             >
               Expand Analysis ▾
             </button>
             <button
               onClick={() => refreshAi()}
               disabled={isRefreshing}
-              className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-accent transition-colors disabled:opacity-50"
+              className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-accent transition-colors disabled:opacity-50 cursor-pointer"
               title="Re-run real-time analysis"
             >
               <span className={isRefreshing ? "animate-spin inline-block" : ""}>🔄</span>
@@ -171,7 +158,7 @@ export function AiMarketAnalysis() {
   return (
     <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs space-y-4 transition-all">
       {/* Header bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/60 pb-3">
         <div className="flex items-center gap-2.5">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xs shadow-2xs">
             ✨
@@ -180,7 +167,7 @@ export function AiMarketAnalysis() {
             <h2 className="text-sm font-bold tracking-tight flex items-center gap-2 text-foreground">
               NEPSE Market Status & Confidence
               <span className="rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.2 text-[10px] font-bold">
-                AGY AI
+                {data.source === "agy" ? "AGY AI" : "QUANT SYNTHESIS"}
               </span>
             </h2>
             <p className="text-[11px] text-muted-foreground">
@@ -189,13 +176,20 @@ export function AiMarketAnalysis() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-muted-foreground hidden sm:inline font-mono">
-            Evaluated {new Date(data.evaluated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </span>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {/* Timestamp Badge */}
+          <div
+            className="flex items-center gap-1.5 rounded-lg bg-muted/60 border border-border/70 px-2.5 py-1 text-[11px] font-mono text-muted-foreground"
+            title={`Generated at: ${timeInfo.formatted}`}
+          >
+            <span className="text-primary font-bold">🕒 AI Generated:</span>
+            <span className="text-foreground font-semibold">{timeInfo.formatted}</span>
+            <span className="text-primary font-medium">({timeInfo.relative})</span>
+          </div>
+
           <button
             onClick={() => setIsCollapsed(true)}
-            className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-accent transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
             title="Collapse into single-line view"
           >
             <span>Minimize ▴</span>
@@ -203,14 +197,29 @@ export function AiMarketAnalysis() {
           <button
             onClick={() => refreshAi()}
             disabled={isRefreshing}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-accent transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-accent transition-colors disabled:opacity-50 cursor-pointer"
             title="Trigger real-time re-analysis using AGY"
           >
             <span className={`text-[11px] ${isRefreshing ? "animate-spin" : ""}`}>🔄</span>
-            {isRefreshing ? "Analyzing…" : "Refresh AI"}
+            {isRefreshing ? "Analyzing with AGY…" : "Refresh AI"}
           </button>
         </div>
       </div>
+
+      {/* Active Refreshing Alert Banner (keeps previous data displayed while refreshing!) */}
+      {isRefreshing && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-primary/40 bg-primary/10 p-3 text-xs font-medium text-foreground animate-in fade-in duration-200">
+          <span className="flex h-2.5 w-2.5 rounded-full bg-primary animate-ping shrink-0" />
+          <div className="flex-1 flex flex-wrap items-center justify-between gap-1">
+            <span>
+              <strong>Updating Market Intelligence with AGY…</strong> Showing previous analysis until fresh data completes.
+            </span>
+            <span className="text-[11px] font-mono text-muted-foreground">
+              Previous pulse: {timeInfo.formatted}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Top 3 KPI metrics */}
       <div className="grid gap-3.5 sm:grid-cols-3">
@@ -219,99 +228,110 @@ export function AiMarketAnalysis() {
           <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             Market Status & Trend
           </div>
-          <div className={`mt-1 font-mono text-base font-extrabold ${currentTheme.text} flex items-center gap-1.5`}>
-            <span>{data.market_status}</span>
+          <div className={`mt-1 text-base font-extrabold tracking-tight ${currentTheme.text}`}>
+            {data.market_status}
           </div>
-          <div className="mt-1.5 text-xs text-muted-foreground flex items-center gap-1.5">
-            <span>Sentiment:</span>
-            <span className="font-semibold text-foreground">{data.sentiment}</span>
+          <div className="mt-1 text-xs text-muted-foreground font-medium">
+            Sentiment: <strong className="text-foreground">{data.sentiment}</strong>
           </div>
         </div>
 
-        {/* Market Confidence Meter */}
-        <div className="rounded-xl border border-border/70 bg-surface p-4">
+        {/* Confidence Gauge */}
+        <div className="rounded-xl border border-border bg-card p-4 space-y-2">
           <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            <span>Market Confidence</span>
-            <span className="font-bold text-foreground font-mono">{data.confidence_score}% ({data.confidence_level})</span>
+            <span>Confidence Index</span>
+            <span className="text-xs font-extrabold text-foreground font-mono">{data.confidence_score}%</span>
           </div>
           {/* Progress bar */}
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted/40">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${confidenceScoreColor}`}
-              style={{ width: `${Math.min(100, Math.max(5, data.confidence_score))}%` }}
+              className={`h-full transition-all duration-500 ${confidenceScoreColor}`}
+              style={{ width: `${Math.min(100, Math.max(0, data.confidence_score))}%` }}
             />
           </div>
-          <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground font-mono">
-            <span>0% Low</span>
-            <span>50% Neutral</span>
-            <span>100% High</span>
+          <div className="text-[11px] text-muted-foreground">
+            Conviction Level: <strong className="text-foreground">{data.confidence_level}</strong>
           </div>
         </div>
 
-        {/* Tactical Guidance */}
-        <div className="rounded-xl border border-border/70 bg-surface p-4">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Tactical Action
+        {/* Actionable Guidance */}
+        <div className="rounded-xl border border-border bg-card p-4 space-y-1">
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider text-primary">
+            Actionable Playbook
           </div>
-          <p className="mt-1.5 text-xs text-foreground font-medium leading-relaxed line-clamp-3">
+          <p className="text-xs text-foreground font-medium leading-relaxed">
             {data.actionable_advice}
           </p>
         </div>
       </div>
 
-      {/* Summary and Market Breadth row */}
-      <div className="rounded-xl border border-border/60 bg-muted/15 p-4 space-y-2.5 text-xs">
-        <div className="flex items-start gap-2">
-          <span className="font-bold text-primary shrink-0">Insight:</span>
-          <p className="text-foreground leading-relaxed font-medium">{data.summary}</p>
+      {/* Breadth & Turnover Quantitative Evaluation */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-1">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+            <span>▲</span>
+            <span>Advance / Decline Breadth Dynamics</span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {data.breadth_evaluation}
+          </p>
         </div>
 
-        <div className="grid gap-2.5 pt-2 border-t border-border/50 sm:grid-cols-2 text-[11px]">
-          <div>
-            <span className="text-muted-foreground font-semibold">Breadth: </span>
-            <span className="text-foreground font-medium">{data.breadth_evaluation}</span>
+        <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-1">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+            <span>⚡</span>
+            <span>Turnover & Liquidity Assessment</span>
           </div>
-          <div>
-            <span className="text-muted-foreground font-semibold">Turnover: </span>
-            <span className="text-foreground font-medium">{data.turnover_evaluation}</span>
-          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {data.turnover_evaluation}
+          </p>
         </div>
       </div>
 
-      {/* Drivers & Risks Pills */}
-      <div className="grid gap-3 sm:grid-cols-2 text-xs">
-        {data.key_drivers?.length > 0 && (
-          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3.5 space-y-1.5">
-            <div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 mb-1 flex items-center gap-1.5">
-              <span>▲</span> Key Upside Drivers
-            </div>
-            <ul className="space-y-1.5 text-muted-foreground">
-              {data.key_drivers.map((d, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <span className="text-emerald-500 font-bold">•</span>
-                  <span>{d}</span>
-                </li>
-              ))}
-            </ul>
+      {/* Drivers & Risk Catalysts */}
+      <div className="grid gap-3 sm:grid-cols-2 pt-1">
+        {/* Key Drivers */}
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3.5 space-y-2">
+          <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
+            <span className="text-xs">🚀</span>
+            <h3 className="text-xs font-bold uppercase tracking-wider">Primary Catalysts & Drivers</h3>
           </div>
-        )}
+          <ul className="space-y-1.5 text-xs text-foreground/90">
+            {data.key_drivers.map((driver, idx) => (
+              <li key={idx} className="flex items-start gap-1.5 leading-snug">
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓</span>
+                <span>{driver}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-        {data.risks?.length > 0 && (
-          <div className="rounded-xl border border-rose-500/25 bg-rose-500/5 p-3.5 space-y-1.5">
-            <div className="text-[11px] font-bold text-rose-700 dark:text-rose-400 mb-1 flex items-center gap-1.5">
-              <span>⚠️</span> Watchouts & Risks
-            </div>
-            <ul className="space-y-1.5 text-muted-foreground">
-              {data.risks.map((r, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <span className="text-rose-500 font-bold">•</span>
-                  <span>{r}</span>
-                </li>
-              ))}
-            </ul>
+        {/* Risks */}
+        <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3.5 space-y-2">
+          <div className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
+            <span className="text-xs">⚠️</span>
+            <h3 className="text-xs font-bold uppercase tracking-wider">Market Vulnerabilities & Risks</h3>
           </div>
-        )}
+          <ul className="space-y-1.5 text-xs text-foreground/90">
+            {data.risks.map((risk, idx) => (
+              <li key={idx} className="flex items-start gap-1.5 leading-snug">
+                <span className="text-rose-600 dark:text-rose-400 font-bold">✕</span>
+                <span>{risk}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
+
+      {/* Summary Footer */}
+      {data.summary && (
+        <div className="rounded-xl bg-muted/40 border border-border/70 p-3 text-xs text-muted-foreground leading-relaxed flex items-start gap-2">
+          <span className="text-primary font-bold text-sm">💡</span>
+          <div>
+            <strong className="text-foreground">Strategist Synthesis:</strong> {data.summary}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
