@@ -38,10 +38,15 @@ export async function runAgyPrompt(prompt: string, timeoutMs = 60000): Promise<s
   } catch (localErr: unknown) {
     // 2. If agy binary is not on PATH (e.g. inside Docker container), delegate to the host bridge
     const bridgeUrl = process.env.AGY_BRIDGE_URL || "http://host.docker.internal:4141";
+    const bridgeSecret = process.env.AGY_BRIDGE_SECRET;
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (bridgeSecret) {
+        headers["X-Bridge-Secret"] = bridgeSecret;
+      }
       const resp = await fetch(`${bridgeUrl}/prompt`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ prompt }),
         signal: AbortSignal.timeout(timeoutMs),
       });

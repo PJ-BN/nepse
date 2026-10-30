@@ -1,8 +1,9 @@
 services:
   db:
     image: timescale/timescaledb:2.17.2-pg16
+    restart: unless-stopped
     env_file: .env
-    ports: ["5432:5432"]
+    ports: ["127.0.0.1:5432:5432"]
     volumes: [db-data:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
@@ -11,7 +12,8 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    ports: ["6379:6379"]
+    restart: unless-stopped
+    ports: ["127.0.0.1:6379:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -20,10 +22,10 @@ services:
   api:
     build: ./backend
     image: nepse-backend
+    restart: unless-stopped
     env_file: .env
-    command: uvicorn nepse.main:app --host 0.0.0.0 --port 8000 --reload --app-dir src
+    command: uvicorn nepse.main:app --host 0.0.0.0 --port 8000 --app-dir src
     ports: ["8000:8000"]
-    volumes: [./backend:/app]
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -35,21 +37,24 @@ services:
   worker:
     build: ./backend
     image: nepse-backend
+    restart: unless-stopped
     env_file: .env
     command: python -m nepse.workers.main
-    volumes: [./backend:/app]
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_healthy }
 
   web:
     build: ./frontend
+    image: nepse-frontend
+    restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_URL: ""
       API_INTERNAL_URL: http://api:8000
-    command: npm run dev
+      AGY_BRIDGE_URL: ${AGY_BRIDGE_URL:-http://host.docker.internal:4141}
+      AGY_BRIDGE_SECRET: ${AGY_BRIDGE_SECRET:-}
+    command: npm run start
     ports: ["3000:3000"]
-    volumes: [./frontend:/app, /app/node_modules, /app/.next]
     depends_on: [api]
 
 volumes:

@@ -1,9 +1,19 @@
 import { getAuthToken } from "@/features/auth/tokenStorage";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// In the browser, an empty API_URL allows relative calls ("/api/v1/...") which are proxied
+// by Next.js rewrites to the backend, completely eliminating CORS and Mixed-Content issues.
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL !== undefined
+    ? process.env.NEXT_PUBLIC_API_URL
+    : typeof window !== "undefined"
+      ? ""
+      : (process.env.API_INTERNAL_URL ?? "http://localhost:8000");
 
 // Server components run inside the web container and reach the API by service name.
-const baseUrl = () => (typeof window === "undefined" ? process.env.API_INTERNAL_URL ?? API_URL : API_URL);
+const baseUrl = () =>
+  typeof window === "undefined"
+    ? process.env.API_INTERNAL_URL ?? API_URL ?? "http://api:8000"
+    : API_URL;
 
 function buildHeaders(customHeaders?: HeadersInit, contentType = true): Headers {
   const headers = new Headers(customHeaders);

@@ -15,7 +15,17 @@ export const liveKeys = {
 const TOPICS: LiveTopic[] = ["quote", "index", "status", "whale"];
 const MAX_WHALES = 50;
 const RECONNECT_MS = 3_000;
-const WS_URL = `${API_URL.replace(/^http/, "ws")}/api/v1/ws/live`;
+
+function getWsUrl(): string {
+  if (API_URL && API_URL.startsWith("http")) {
+    return `${API_URL.replace(/^http/, "ws")}/api/v1/ws/live`;
+  }
+  if (typeof window !== "undefined") {
+    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${proto}//${window.location.hostname}:8000/api/v1/ws/live`;
+  }
+  return "ws://localhost:8000/api/v1/ws/live";
+}
 
 // One socket per tab, shared by every component that calls useLiveFeed().
 let socket: WebSocket | null = null;
@@ -51,7 +61,7 @@ function apply(qc: QueryClient, msg: LiveMessage) {
 }
 
 function connect(qc: QueryClient) {
-  const ws = new WebSocket(WS_URL);
+  const ws = new WebSocket(getWsUrl());
   ws.onopen = () => ws.send(JSON.stringify({ subscribe: TOPICS }));
   ws.onmessage = (e) => {
     try {
