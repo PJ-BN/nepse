@@ -1,10 +1,17 @@
 import { MacroDashboard } from "@/features/macro";
+import { PageContainer, PageHeader } from "@/shared/ui";
 
 export default function MacroPage() {
   return (
-    <main className="p-6">
-      <h1 className="mb-4 text-2xl font-semibold">Macro &amp; market breadth</h1>
-      <MacroDashboard />
-    </main>
+    <PageContainer maxWidth="standard">
+      <div className="space-y-6">
+        <PageHeader
+          title="Macro Liquidity & Market Breadth"
+          description="NRB banking system liquidity regimes, interbank rates, Relative Rotation Graphs (RRG), and McClellan market breadth oscillators."
+          icon="🌐"
+        />
+        <MacroDashboard />
+      </div>
+    </PageContainer>
   );
 }

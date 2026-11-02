@@ -5,6 +5,7 @@ import type { Holding } from "../types";
 import { npr, signClass } from "./format";
 import type { MarketQuote } from "../portfolioAgentEngine";
 import { evaluatePortfolioHolding } from "../portfolioAgentEngine";
+import { TableContainer } from "@/shared/ui";
 
 export function HoldingsTable({
   holdings,
@@ -36,8 +37,8 @@ export function HoldingsTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-border/80 bg-card shadow-xs">
-      <table className="w-full text-right text-xs">
+    <TableContainer scrollHint>
+      <table className="min-w-full text-right text-xs">
         <thead className="bg-surface/60 border-b border-border/60 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <tr>
             <th className="py-3 px-4 text-left">Company / Symbol</th>
@@ -195,6 +196,6 @@ export function HoldingsTable({
           })}
         </tbody>
       </table>
-    </div>
+    </TableContainer>
   );
 }

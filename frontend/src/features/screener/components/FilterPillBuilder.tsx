@@ -9,13 +9,13 @@ type Props = {
   onChange: (pills: Pill[], combinator: Combinator) => void;
 };
 
-const input = "rounded border px-2 py-1 text-sm";
+const input = "rounded-lg border border-input bg-card px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary";
 
 function PillEditor({ pill, onChange, onRemove }: { pill: Pill; onChange: (p: Pill) => void; onRemove: () => void }) {
   const kind = FIELDS[pill.field].kind;
   const canCompare = kind === "num" && pill.op !== "between" && pill.op !== "in";
   return (
-    <div className="flex flex-wrap items-center gap-1 rounded-full border bg-gray-50 px-3 py-1">
+    <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-border/80 bg-muted/20 p-2 shadow-2xs">
       <select
         aria-label="Field"
         className={input}

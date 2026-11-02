@@ -2,6 +2,7 @@
 
 import type { Txn } from "../types";
 import { npr } from "./format";
+import { TableContainer } from "@/shared/ui";
 
 export function TxnLedger({
   transactions,
@@ -19,8 +20,8 @@ export function TxnLedger({
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-border/80 bg-card shadow-xs">
-      <table className="w-full text-right text-xs">
+    <TableContainer scrollHint>
+      <table className="min-w-full text-right text-xs">
         <thead className="bg-surface/60 border-b border-border/60 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           <tr>
             <th className="py-3 px-4 text-left">Date</th>
@@ -76,6 +77,6 @@ export function TxnLedger({
           })}
         </tbody>
       </table>
-    </div>
+    </TableContainer>
   );
 }

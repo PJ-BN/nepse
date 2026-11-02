@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from redis.asyncio import Redis
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, Text, func, select
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func, select
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +23,9 @@ class UserRow(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(Text, unique=True)
     password_hash: Mapped[str] = mapped_column(Text)
+    role: Mapped[str] = mapped_column(String(20), default="user", server_default="user")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -44,14 +47,22 @@ class SqlUserRepo:
 
     async def get_by_email(self, email: str) -> User | None:
         row = await self.session.scalar(select(UserRow).where(UserRow.email == email))
-        return User(row.id, row.email, row.password_hash, row.created_at) if row else None
+        return (
+            User(row.id, row.email, row.password_hash, row.created_at, row.role, row.is_active, row.last_login_at)
+            if row
+            else None
+        )
 
     async def get_by_id(self, user_id: int) -> User | None:
         row = await self.session.scalar(select(UserRow).where(UserRow.id == user_id))
-        return User(row.id, row.email, row.password_hash, row.created_at) if row else None
+        return (
+            User(row.id, row.email, row.password_hash, row.created_at, row.role, row.is_active, row.last_login_at)
+            if row
+            else None
+        )
 
-    async def add(self, email: str, password_hash: str) -> int:
-        row = UserRow(email=email, password_hash=password_hash)
+    async def add(self, email: str, password_hash: str, role: str = "user") -> int:
+        row = UserRow(email=email, password_hash=password_hash, role=role, is_active=True)
         self.session.add(row)
         try:
             await self.session.commit()
@@ -59,6 +70,54 @@ class SqlUserRepo:
             await self.session.rollback()
             raise EmailTaken(email) from None
         return row.id
+
+    async def list_users(self, search: str | None = None, role: str | None = None, limit: int = 50, offset: int = 0) -> tuple[list[User], int]:
+        stmt = select(UserRow)
+        count_stmt = select(func.count(UserRow.id))
+        if search:
+            stmt = stmt.where(UserRow.email.ilike(f"%{search}%"))
+            count_stmt = count_stmt.where(UserRow.email.ilike(f"%{search}%"))
+        if role:
+            stmt = stmt.where(UserRow.role == role)
+            count_stmt = count_stmt.where(UserRow.role == role)
+        
+        total = (await self.session.scalar(count_stmt)) or 0
+        rows = (await self.session.scalars(stmt.order_by(UserRow.created_at.desc()).limit(limit).offset(offset))).all()
+        users = [
+            User(r.id, r.email, r.password_hash, r.created_at, r.role, r.is_active, r.last_login_at)
+            for r in rows
+        ]
+        return users, total
+
+    async def update_role(self, user_id: int, new_role: str) -> bool:
+        row = await self.session.scalar(select(UserRow).where(UserRow.id == user_id))
+        if not row:
+            return False
+        row.role = new_role
+        await self.session.commit()
+        return True
+
+    async def update_status(self, user_id: int, is_active: bool) -> bool:
+        row = await self.session.scalar(select(UserRow).where(UserRow.id == user_id))
+        if not row:
+            return False
+        row.is_active = is_active
+        await self.session.commit()
+        return True
+
+    async def update_last_login(self, user_id: int) -> None:
+        row = await self.session.scalar(select(UserRow).where(UserRow.id == user_id))
+        if row:
+            row.last_login_at = datetime.now()
+            await self.session.commit()
+
+    async def delete(self, user_id: int) -> bool:
+        row = await self.session.scalar(select(UserRow).where(UserRow.id == user_id))
+        if not row:
+            return False
+        await self.session.delete(row)
+        await self.session.commit()
+        return True
 
 
 class SqlTxnRepo:

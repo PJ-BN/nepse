@@ -9,10 +9,12 @@ export function AiMarketAnalysis() {
   const { isAuthenticated, openAuthModal } = useAuth();
 
   const { data, isLoading, isFetching, isError, error, refreshAi, isRefreshing, refetch } = useMarketAi({
-    enabled: isAuthenticated,
+    enabled: true,
   });
 
-  if (!isAuthenticated) {
+  const isInitialLoading = (isLoading || isFetching) && !data;
+
+  if (!isAuthenticated && !data && !isInitialLoading) {
     return (
       <section className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/10 via-card to-card p-5 shadow-xs">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -43,8 +45,6 @@ export function AiMarketAnalysis() {
       </section>
     );
   }
-
-  const isInitialLoading = (isLoading || isFetching) && !data;
 
   // Initial Loading State (when no previous evaluation exists in DB)
   if (isInitialLoading) {

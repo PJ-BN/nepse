@@ -1,6 +1,7 @@
 "use client";
 
 import type { Bracket, HorizonResult, SimulationResult } from "../types";
+import { TableContainer } from "@/shared/ui";
 
 const LOW_SAMPLE = 30;
 
@@ -8,8 +9,8 @@ const pct = (v: number | null | undefined) => (v == null ? "–" : `${v >= 0 ? "
 const tone = (v: number | null | undefined) => (v == null ? "" : v > 0 ? "text-green-600" : v < 0 ? "text-red-600" : "");
 
 function Badge({ ok, children }: { ok: boolean | null; children: React.ReactNode }) {
-  const cls = ok === null ? "bg-gray-200 text-gray-700" : ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
-  return <span className={`rounded px-2 py-0.5 text-xs font-medium ${cls}`}>{children}</span>;
+  const cls = ok === null ? "bg-gray-200 text-gray-700 dark:bg-muted dark:text-muted-foreground" : ok ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25" : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/25";
+  return <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${cls}`}>{children}</span>;
 }
 
 const bracketLabel = (b: Bracket | null) =>
@@ -17,22 +18,32 @@ const bracketLabel = (b: Bracket | null) =>
 
 function ForwardTable({ results }: { results: HorizonResult[] }) {
   return (
-    <table className="w-full text-left text-sm">
-      <thead className="text-xs text-gray-500">
-        <tr><th>Horizon</th><th>Return</th><th>Best (MFE)</th><th>Worst (MAE)</th><th>Result</th></tr>
-      </thead>
-      <tbody>
-        {results.map((r) => (
-          <tr key={r.horizon} className="border-t">
-            <td>{r.horizon} bars</td>
-            <td className={tone(r.ret)}>{pct(r.ret)}</td>
-            <td>{pct(r.mfe)}</td>
-            <td>{pct(r.mae)}</td>
-            <td><Badge ok={r.ret == null ? null : r.ret > 0}>{r.ret == null ? "no data" : r.ret > 0 ? "hit" : "miss"}</Badge></td>
+    <TableContainer scrollHint>
+      <table className="min-w-full text-left text-xs tabular-nums">
+        <thead className="bg-muted/20 border-b border-border/60 text-[10px] uppercase font-bold text-muted-foreground">
+          <tr>
+            <th className="py-2 px-3">Horizon</th>
+            <th className="py-2 px-3">Return</th>
+            <th className="py-2 px-3">Best (MFE)</th>
+            <th className="py-2 px-3">Worst (MAE)</th>
+            <th className="py-2 px-3 text-center">Result</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody className="divide-y divide-border/40 font-mono">
+          {results.map((r) => (
+            <tr key={r.horizon} className="hover:bg-muted/30 transition-colors">
+              <td className="py-2 px-3 font-semibold text-foreground">{r.horizon} bars</td>
+              <td className={`py-2 px-3 font-bold ${tone(r.ret)}`}>{pct(r.ret)}</td>
+              <td className="py-2 px-3 text-emerald-600 dark:text-emerald-400">{pct(r.mfe)}</td>
+              <td className="py-2 px-3 text-rose-600 dark:text-rose-400">{pct(r.mae)}</td>
+              <td className="py-2 px-3 text-center">
+                <Badge ok={r.ret == null ? null : r.ret > 0}>{r.ret == null ? "no data" : r.ret > 0 ? "hit" : "miss"}</Badge>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </TableContainer>
   );
 }
 

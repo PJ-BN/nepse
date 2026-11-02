@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect, ReactNode } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 import { DataSyncModal } from "@/features/sync";
-import { UserMenu } from "@/features/auth";
+import { UserMenu, useAuth } from "@/features/auth";
 
 interface NavItem {
   href: string;
@@ -226,9 +226,36 @@ export function Sidebar() {
     return pathname.startsWith(href);
   };
 
-  const NavList = ({ onSelect }: { onSelect?: () => void }) => (
-    <div className="space-y-6">
-      {NAV_SECTIONS.map((section) => (
+  const NavList = ({ onSelect }: { onSelect?: () => void }) => {
+    const { user } = useAuth();
+    return (
+      <div className="space-y-6">
+        {user?.role === "admin" && (
+          <div className="space-y-1 pb-2 border-b border-border/60">
+            <h3 className="px-3 text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+              Administration
+            </h3>
+            <Link
+              href="/admin"
+              onClick={onSelect}
+              aria-current={isActive("/admin") ? "page" : undefined}
+              className={`group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                isActive("/admin")
+                  ? "bg-purple-500/20 text-purple-600 dark:text-purple-400 shadow-2xs border border-purple-500/30"
+                  : "text-purple-600 dark:text-purple-400 hover:bg-purple-500/10"
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="text-sm">⚙️</span>
+                <span className="truncate">Admin Control Center</span>
+              </div>
+              <span className="shrink-0 rounded-full bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30 px-1.5 py-0.2 text-[9px] font-extrabold uppercase tracking-wide">
+                SUPER
+              </span>
+            </Link>
+          </div>
+        )}
+        {NAV_SECTIONS.map((section) => (
         <div key={section.title} className="space-y-1">
           <h3 className="px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
             {section.title}
@@ -242,7 +269,7 @@ export function Sidebar() {
                   href={item.href}
                   onClick={onSelect}
                   aria-current={active ? "page" : undefined}
-                  className={`group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition-all ${
+                  className={`group flex items-center justify-between rounded-xl px-3 py-2.5 min-h-[40px] text-xs font-medium transition-all ${
                     active
                       ? "bg-accent/15 text-accent font-semibold shadow-2xs"
                       : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -271,6 +298,7 @@ export function Sidebar() {
       ))}
     </div>
   );
+};
 
   return (
     <>

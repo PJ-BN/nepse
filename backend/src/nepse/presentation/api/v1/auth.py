@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from nepse.application.auth import use_cases
-from nepse.application.auth.ports import EmailTaken
+from nepse.application.auth.ports import EmailTaken, User
 from nepse.infrastructure.db.models_portfolio import SqlUserRepo
 from nepse.infrastructure.db.session import SessionLocal
 from nepse.presentation.api.schemas.auth import LoginIn, RegisterIn, TokenOut, UserOut
@@ -52,6 +52,21 @@ def current_user_id(
         raise HTTPException(401, "invalid or expired token", headers={"WWW-Authenticate": "Bearer"}) from None
 
 
+async def require_admin(
+    user_id: int = Depends(current_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> User:
+    users = SqlUserRepo(session)
+    user = await users.get_by_id(user_id)
+    if user is None:
+        raise HTTPException(404, "user not found")
+    if not user.is_active:
+        raise HTTPException(403, "account is deactivated")
+    if user.role != "admin":
+        raise HTTPException(403, "administrative privileges required")
+    return user
+
+
 @router.get("/me", response_model=UserOut)
 async def me(
     user_id: int = Depends(current_user_id),
@@ -61,7 +76,14 @@ async def me(
     user = await users.get_by_id(user_id)
     if user is None:
         raise HTTPException(404, "user not found")
-    return UserOut(id=user.id, email=user.email, created_at=user.created_at)
+    return UserOut(
+        id=user.id,
+        email=user.email,
+        role=user.role,
+        is_active=user.is_active,
+        created_at=user.created_at,
+        last_login_at=user.last_login_at,
+    )
 
 
 @router.post("/register", status_code=201, response_model=TokenOut)
@@ -70,7 +92,20 @@ async def register(
 ) -> TokenOut:
     users = SqlUserRepo(session)
     try:
-        await use_cases.register(users, body.email, body.password)
+        # Check if first user or matches ADMIN_INITIAL_EMAIL
+        import os
+        admin_email = os.getenv("ADMIN_INITIAL_EMAIL", "").strip().lower()
+        role = "admin" if (admin_email and body.email.strip().lower() == admin_email) else "user"
+        
+        # Also, if total users is 0, make first user admin automatically
+        all_users, total = await users.list_users(limit=1)
+        if total == 0:
+            role = "admin"
+
+        from nepse.application.auth.use_cases import _hasher
+        if await users.get_by_email(body.email):
+            raise EmailTaken(body.email)
+        await users.add(body.email, _hasher.hash(body.password), role=role)
     except EmailTaken:
         raise HTTPException(409, "email already registered") from None
     ttl = timedelta(minutes=_settings().jwt_ttl_minutes)
@@ -82,7 +117,14 @@ async def login(
     body: LoginIn, session: AsyncSession = Depends(get_session), secret: str = Depends(jwt_secret),
 ) -> TokenOut:
     ttl = timedelta(minutes=_settings().jwt_ttl_minutes)
+    users = SqlUserRepo(session)
+    user = await users.get_by_email(body.email.strip().lower())
+    if user and not user.is_active:
+        raise HTTPException(403, "Account has been suspended by administrator.")
     try:
-        return TokenOut(access_token=await use_cases.login(SqlUserRepo(session), body.email, body.password, secret, ttl))
+        token = await use_cases.login(users, body.email, body.password, secret, ttl)
+        if user:
+            await users.update_last_login(user.id)
+        return TokenOut(access_token=token)
     except use_cases.InvalidCredentials:
         raise HTTPException(401, "invalid email or password") from None

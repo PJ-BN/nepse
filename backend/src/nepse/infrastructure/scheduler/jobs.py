@@ -68,6 +68,18 @@ def build_scheduler(
     scheduler.add_job(poll, "cron", day_of_week=TRADING_DAYS, hour="10-15", second="*/20", id="live_poll")
     scheduler.add_job(eod, "cron", day_of_week=TRADING_DAYS, hour=15, minute=15, id="eod")
 
+    async def run_ai_master_job() -> None:
+        try:
+            from nepse.application.orchestrator.evening_pipeline import run_evening_pipeline
+            log.info("Starting scheduled 4:00 PM evening AI master pipeline...")
+            res = await run_evening_pipeline(triggered_by="scheduler")
+            log.info("Evening AI master pipeline finished: %s", res)
+        except Exception:
+            log.exception("Scheduled evening AI master pipeline failed")
+
+    # Scheduled daily at 16:00 (4:00 PM NPT) after trading closes and EOD settles
+    scheduler.add_job(run_ai_master_job, "cron", day_of_week=TRADING_DAYS, hour=16, minute=0, id="daily_evening_ai_master")
+
     async def screener() -> None:
         if POLL_START <= now_npt().time() <= POLL_END:
             try:

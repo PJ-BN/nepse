@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { WhaleToasts } from "@/features/live-feed";
@@ -18,6 +18,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "NEPSE Analytics",
   description: "NEPSE market analytics",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f7fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0d14" },
+  ],
 };
 
 // Applies the saved (or OS) theme before first paint to avoid a flash.
@@ -41,7 +51,7 @@ export default function RootLayout({
             <AuthProvider>
               <div className="flex min-h-screen flex-col md:flex-row bg-background text-foreground">
                 <Sidebar />
-                <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex min-w-0 flex-1 flex-col w-full overflow-x-hidden">
                   {children}
                 </div>
               </div>

@@ -1,7 +1,10 @@
 export interface User {
   id: number;
   email: string;
+  role?: "admin" | "user";
+  is_active?: boolean;
   created_at?: string | null;
+  last_login_at?: string | null;
 }
 
 export interface TokenResponse {

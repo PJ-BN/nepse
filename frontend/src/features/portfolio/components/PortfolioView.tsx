@@ -206,11 +206,11 @@ export function PortfolioView() {
       </div>
 
       {/* 2. Navigation Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-2">
-        <div className="flex items-center gap-1.5 overflow-x-auto">
+      <div className="border-b border-border/80 pb-2">
+        <div className="flex items-center gap-2 overflow-x-auto w-full [scrollbar-width:none] [-webkit-overflow-scrolling:touch] py-1">
           <button
             onClick={() => setActiveTab("HOLDINGS")}
-            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer ${
               activeTab === "HOLDINGS"
                 ? "bg-foreground text-background shadow-xs"
                 : "bg-surface text-muted-foreground hover:bg-muted/40 hover:text-foreground"
@@ -222,7 +222,7 @@ export function PortfolioView() {
 
           <button
             onClick={() => setActiveTab("AI_ADVISOR")}
-            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer ${
               activeTab === "AI_ADVISOR"
                 ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs"
                 : "bg-surface text-purple-600 dark:text-purple-400 hover:bg-purple-500/10"
@@ -237,7 +237,7 @@ export function PortfolioView() {
 
           <button
             onClick={() => setActiveTab("TXNS")}
-            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer ${
               activeTab === "TXNS"
                 ? "bg-foreground text-background shadow-xs"
                 : "bg-surface text-muted-foreground hover:bg-muted/40 hover:text-foreground"
@@ -249,7 +249,7 @@ export function PortfolioView() {
 
           <button
             onClick={() => setActiveTab("REALIZED")}
-            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer ${
               activeTab === "REALIZED"
                 ? "bg-foreground text-background shadow-xs"
                 : "bg-surface text-muted-foreground hover:bg-muted/40 hover:text-foreground"
@@ -261,7 +261,7 @@ export function PortfolioView() {
 
           <button
             onClick={() => setActiveTab("CALCULATOR")}
-            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer ${
               activeTab === "CALCULATOR"
                 ? "bg-foreground text-background shadow-xs"
                 : "bg-surface text-muted-foreground hover:bg-muted/40 hover:text-foreground"

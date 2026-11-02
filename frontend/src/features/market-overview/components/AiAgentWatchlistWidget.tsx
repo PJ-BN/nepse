@@ -15,7 +15,7 @@ export function AiAgentWatchlistWidget() {
     queryKey: ["agent-market-scan"],
     queryFn: () => fetchAgentScan(false),
     staleTime: 5 * 60 * 1000,
-    enabled: isAuthenticated,
+    enabled: true,
   });
 
   const handleRefresh = () => {
@@ -26,7 +26,7 @@ export function AiAgentWatchlistWidget() {
     fetchAgentScan(true).then(() => refetch());
   };
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !scan && !isLoading) {
     return (
       <section className="overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-r from-primary/10 via-card to-card p-5 sm:p-6 shadow-xs">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">

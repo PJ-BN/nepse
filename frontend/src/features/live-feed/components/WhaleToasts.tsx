@@ -26,13 +26,18 @@ export function WhaleToasts() {
 
   if (!toasts.length) return null;
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2" role="status" aria-live="polite">
+    <div className="fixed bottom-4 right-3 left-3 sm:left-auto sm:right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none" role="status" aria-live="polite">
       {toasts.map((w) => (
-        <div key={w.contract_no} className="rounded border border-amber-500 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 shadow-lg">
-          <span className="font-semibold">{w.symbol}</span> {w.qty.toLocaleString()} @ {w.rate} · NPR{" "}
-          {Math.round(w.amount).toLocaleString()}
-          <span className="block text-xs text-zinc-400">
-            broker {w.buyer_broker} ← {w.seller_broker}
+        <div key={w.contract_no} className="pointer-events-auto rounded-xl border border-amber-500/80 bg-zinc-900/95 backdrop-blur-md px-3.5 py-2.5 text-xs sm:text-sm text-zinc-100 shadow-xl">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-bold text-amber-400 font-mono">{w.symbol}</span>
+            <span className="font-mono text-zinc-300">NPR {Math.round(w.amount).toLocaleString()}</span>
+          </div>
+          <div className="text-zinc-200 mt-0.5">
+            {w.qty.toLocaleString()} shares @ {w.rate}
+          </div>
+          <span className="block text-[10px] text-zinc-400 font-mono mt-1">
+            Broker #{w.buyer_broker} ← #{w.seller_broker}
           </span>
         </div>
       ))}

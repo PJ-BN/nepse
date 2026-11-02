@@ -9,6 +9,9 @@ class User:
     email: str
     password_hash: str
     created_at: datetime | None = None
+    role: str = "user"
+    is_active: bool = True
+    last_login_at: datetime | None = None
 
 
 class EmailTaken(Exception):

@@ -1,4 +1,5 @@
 import { PortfolioView } from "@/features/portfolio";
+import { PageContainer } from "@/shared/ui";
 
 export const metadata = {
   title: "Portfolio & AI Advisory Agent | NEPSE Analytics",
@@ -8,8 +9,8 @@ export const metadata = {
 
 export default function PortfolioPage() {
   return (
-    <main className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8 py-6">
+    <PageContainer maxWidth="standard">
       <PortfolioView />
-    </main>
+    </PageContainer>
   );
 }

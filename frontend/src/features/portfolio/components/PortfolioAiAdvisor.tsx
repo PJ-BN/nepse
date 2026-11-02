@@ -319,11 +319,11 @@ export function PortfolioAiAdvisor({
           </div>
 
           {/* 3. Action Filter Tabs */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-3">
-            <div className="flex items-center gap-1.5 overflow-x-auto">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-3">
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto [scrollbar-width:none] [-webkit-overflow-scrolling:touch] pb-1">
               <button
                 onClick={() => setFilterAction("ALL")}
-                className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
+                className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                   filterAction === "ALL"
                     ? "bg-foreground text-background shadow-xs"
                     : "bg-surface text-muted-foreground hover:bg-muted/40 hover:text-foreground"
@@ -333,7 +333,7 @@ export function PortfolioAiAdvisor({
               </button>
               <button
                 onClick={() => setFilterAction("SELL")}
-                className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${
                   filterAction === "SELL"
                     ? "bg-rose-600 text-white shadow-xs"
                     : "bg-surface text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"
@@ -344,7 +344,7 @@ export function PortfolioAiAdvisor({
               </button>
               <button
                 onClick={() => setFilterAction("WAIT")}
-                className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${
                   filterAction === "WAIT"
                     ? "bg-amber-600 text-white shadow-xs"
                     : "bg-surface text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
@@ -355,7 +355,7 @@ export function PortfolioAiAdvisor({
               </button>
               <button
                 onClick={() => setFilterAction("BUY_MORE")}
-                className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap cursor-pointer ${
                   filterAction === "BUY_MORE"
                     ? "bg-emerald-600 text-white shadow-xs"
                     : "bg-surface text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"

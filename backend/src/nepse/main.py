@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from nepse.presentation.api import health
 from nepse.presentation.api.v1 import (
+    admin,
     ai,
     auth,
     breadth,
@@ -38,6 +39,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(health.router)
+app.include_router(admin.router)
 app.include_router(ai.router)
 app.include_router(auth.router)
 app.include_router(breadth.router)

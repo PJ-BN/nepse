@@ -8,6 +8,7 @@ import { fetchAgentScan } from "../api";
 import { useWatchlist } from "../useWatchlist";
 import { StockCard } from "./StockCard";
 import { AgentChatBox } from "./AgentChatBox";
+import { TableContainer } from "@/shared/ui";
 
 type FilterTab = "ALL" | "BUY" | "WATCHLIST" | "SELL" | "MY_WATCHLIST";
 type SortOption = "SCORE_DESC" | "CHANGE_DESC" | "TURNOVER_DESC" | "BROKER_DESC" | "RANGE_DESC" | "PRICE_ASC";
@@ -467,11 +468,11 @@ export function WatchlistView() {
 
           <section className="space-y-3">
         {/* Top Filter Tabs Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
-          <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto [scrollbar-width:none] [-webkit-overflow-scrolling:touch] pb-1">
             <button
               onClick={() => setActiveTab("ALL")}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                 activeTab === "ALL"
                   ? "bg-primary text-primary-foreground shadow-xs"
                   : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -481,7 +482,7 @@ export function WatchlistView() {
             </button>
             <button
               onClick={() => setActiveTab("BUY")}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                 activeTab === "BUY"
                   ? "bg-emerald-600 text-white shadow-xs"
                   : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20"
@@ -491,7 +492,7 @@ export function WatchlistView() {
             </button>
             <button
               onClick={() => setActiveTab("WATCHLIST")}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                 activeTab === "WATCHLIST"
                   ? "bg-amber-600 text-white shadow-xs"
                   : "bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
@@ -501,7 +502,7 @@ export function WatchlistView() {
             </button>
             <button
               onClick={() => setActiveTab("SELL")}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                 activeTab === "SELL"
                   ? "bg-rose-600 text-white shadow-xs"
                   : "bg-rose-500/10 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20"
@@ -511,7 +512,7 @@ export function WatchlistView() {
             </button>
             <button
               onClick={() => setActiveTab("MY_WATCHLIST")}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all shrink-0 whitespace-nowrap cursor-pointer ${
                 activeTab === "MY_WATCHLIST"
                   ? "bg-primary text-primary-foreground shadow-xs"
                   : "bg-primary/10 text-primary hover:bg-primary/20"
@@ -642,8 +643,8 @@ export function WatchlistView() {
         </div>
       ) : (
         /* Table View */
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
-          <table className="w-full text-left text-xs">
+        <TableContainer scrollHint>
+          <table className="min-w-full text-left text-xs">
             <thead className="border-b border-border bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="py-3 px-4">Symbol</th>
@@ -728,7 +729,7 @@ export function WatchlistView() {
               })}
             </tbody>
           </table>
-        </div>
+        </TableContainer>
       )}
         </>
       )}

@@ -219,7 +219,7 @@ export function ChartGrid({ initial }: { initial: string[] }) {
         }}
       />
 
-      <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+      <div className={`grid gap-3 grid-cols-1 ${cols === 2 ? "md:grid-cols-2" : cols === 3 ? "md:grid-cols-3" : "md:grid-cols-1"}`}>
         {symbols.map((s, i) => (
           <ChartView
             key={i}

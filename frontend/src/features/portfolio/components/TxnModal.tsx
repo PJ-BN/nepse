@@ -89,7 +89,7 @@ export function TxnModal({
       }}
     >
       <div
-        className="relative w-full max-w-lg rounded-3xl border border-border/80 bg-card p-6 sm:p-7 shadow-2xl"
+        className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl sm:rounded-3xl border border-border/80 bg-card p-5 sm:p-7 shadow-2xl [scrollbar-width:thin]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

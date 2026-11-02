@@ -20,7 +20,7 @@ const LABELS: Record<string, string> = {
   net_receivable: "Net receivable",
   realized_pnl: "Profit / loss",
 };
-const input = "rounded border px-2 py-1";
+const input = "w-full rounded-xl border border-input bg-card px-3 py-2 text-xs sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 font-mono";
 
 export function FeeCalculator() {
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
@@ -45,47 +45,59 @@ export function FeeCalculator() {
 
   const r = run.data;
   return (
-    <div className="flex flex-col gap-3">
-      <form onSubmit={submit} className="flex flex-wrap items-end gap-3 text-sm">
-        <label className="flex flex-col">
-          Side
+    <div className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
+      <div className="border-b border-border/60 pb-2.5">
+        <h3 className="text-sm sm:text-base font-bold text-foreground flex items-center gap-2">
+          <span>🧮</span>
+          <span>NEPSE Brokerage, SEBON & Capital Gains Tax Calculator</span>
+        </h3>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Calculates official SEBON regulatory fees, DP charges, tiered broker slabs, and holding period tax (5% vs 7.5%).
+        </p>
+      </div>
+
+      <form onSubmit={submit} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs items-end">
+        <label className="flex flex-col gap-1">
+          <span className="font-semibold text-muted-foreground">Order Side</span>
           <select value={side} onChange={(e) => setSide(e.target.value as "BUY" | "SELL")} className={input}>
             <option>BUY</option>
             <option>SELL</option>
           </select>
         </label>
-        <label className="flex flex-col">
-          Qty
-          <input name="qty" type="number" required min={1} step={1} className={`${input} w-24`} />
+        <label className="flex flex-col gap-1">
+          <span className="font-semibold text-muted-foreground">Quantity</span>
+          <input name="qty" type="number" required min={1} step={1} placeholder="100" className={input} />
         </label>
-        <label className="flex flex-col">
-          {side === "BUY" ? "Buy rate" : "Sell rate"}
-          <input name="rate" type="number" required min={0.01} step={0.01} className={`${input} w-28`} />
+        <label className="flex flex-col gap-1">
+          <span className="font-semibold text-muted-foreground">{side === "BUY" ? "Buy Rate (Rs)" : "Sell Rate (Rs)"}</span>
+          <input name="rate" type="number" required min={0.01} step={0.01} placeholder="500.00" className={input} />
         </label>
         {side === "SELL" && (
           <>
-            <label className="flex flex-col">
-              Bought at
-              <input name="buy_rate" type="number" required min={0} step={0.01} className={`${input} w-28`} />
+            <label className="flex flex-col gap-1">
+              <span className="font-semibold text-muted-foreground">Bought At (Rs)</span>
+              <input name="buy_rate" type="number" required min={0} step={0.01} placeholder="420.00" className={input} />
             </label>
-            <label className="flex flex-col">
-              Buy date
+            <label className="flex flex-col gap-1">
+              <span className="font-semibold text-muted-foreground">Buy Date</span>
               <input name="buy_date" type="date" required max={today()} className={input} />
             </label>
-            <label className="flex flex-col">
-              Sell date
+            <label className="flex flex-col gap-1">
+              <span className="font-semibold text-muted-foreground">Sell Date</span>
               <input name="sell_date" type="date" required max={today()} defaultValue={today()} className={input} />
             </label>
           </>
         )}
-        <label className="flex flex-col">
-          Investor
+        <label className="flex flex-col gap-1">
+          <span className="font-semibold text-muted-foreground">Investor Type</span>
           <select name="investor_type" className={input}>
             <option>INDIVIDUAL</option>
             <option>INSTITUTION</option>
           </select>
         </label>
-        <button className="rounded bg-foreground px-3 py-1 text-background">Calculate</button>
+        <button className="col-span-2 sm:col-span-1 rounded-xl bg-foreground px-4 py-2.5 text-xs font-bold text-background hover:opacity-90 transition-opacity cursor-pointer shadow-xs">
+          Calculate Fees
+        </button>
       </form>
       {run.error && (
         <p role="alert" className="text-sm text-red-600">

@@ -23,5 +23,8 @@ class TokenOut(BaseModel):
 class UserOut(BaseModel):
     id: int
     email: str
+    role: str = "user"
+    is_active: bool = True
     created_at: datetime | None = None
+    last_login_at: datetime | None = None
 

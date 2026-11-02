@@ -28,8 +28,12 @@ case "$JOB" in
     echo "[RUNNING] Executing Full Evening Sync..."
     docker compose run --rm worker sh -c "python -m nepse.workers.main eod && python -m nepse.workers.main news && python -m nepse.workers.main job macro_sebon && python -m nepse.workers.main job eod_crosscheck"
     ;;
+  ai-master)
+    echo "[RUNNING] Executing AI Evening Master Pipeline (Macro + Trade + Watchlist)..."
+    docker compose run --rm worker python -m nepse.workers.main ai-master
+    ;;
   *)
-    echo "Usage: ./sync.sh [eod|news|sebon|crosscheck|all]"
+    echo "Usage: ./sync.sh [eod|news|sebon|crosscheck|all|ai-master]"
     exit 1
     ;;
 esac

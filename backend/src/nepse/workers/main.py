@@ -118,6 +118,25 @@ def daily_jobs(repo: SqlIngestionRepository) -> list[DailyJob]:
 
 
 async def main(command: str | None, args: list[str]) -> None:
+    if command == "make-admin":
+        if not args:
+            raise SystemExit("usage: python -m nepse.workers.main make-admin <email>")
+        email = args[0].strip().lower()
+        from nepse.infrastructure.db.models_portfolio import SqlUserRepo
+        async with SessionLocal() as session:
+            repo = SqlUserRepo(session)
+            user = await repo.get_by_email(email)
+            if not user:
+                raise SystemExit(f"User with email '{email}' does not exist.")
+            await repo.update_role(user.id, "admin")
+            log.info("Successfully granted admin privileges to %s (id: %d)", email, user.id)
+        return
+    if command == "ai-master":
+        from nepse.application.orchestrator.evening_pipeline import run_evening_pipeline
+        log.info("Running evening AI master pipeline manually from CLI...")
+        res = await run_evening_pipeline(triggered_by="cli")
+        log.info("AI master pipeline finished: %s", res)
+        return
     if command == "backfill":
         since = date.today() - timedelta(days=365 * 10)
         async with sharesansar.new_http_client() as http:

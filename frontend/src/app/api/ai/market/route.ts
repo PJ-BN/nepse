@@ -7,22 +7,23 @@ import { checkAiAuth, unauthorizedAiResponse } from "../authCheck";
 const API_BASE = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export async function GET(req: NextRequest) {
+  const searchParams = req.nextUrl.searchParams;
+  const forceRefresh = searchParams.get("refresh") === "true";
+
+  // 1. If not forcing refresh, return stored market evaluation from database to everyone
+  if (!forceRefresh) {
+    const stored = await getStoredAiEvaluation<MarketAiAnalysis>("market", "GLOBAL");
+    if (stored) {
+      return NextResponse.json(stored);
+    }
+  }
+
+  // Only force-refresh requests require authentication
   if (!(await checkAiAuth(req))) {
     return unauthorizedAiResponse();
   }
 
   try {
-    const searchParams = req.nextUrl.searchParams;
-    const forceRefresh = searchParams.get("refresh") === "true";
-
-    // 1. If not forcing refresh, return stored market evaluation from database
-    if (!forceRefresh) {
-      const stored = await getStoredAiEvaluation<MarketAiAnalysis>("market", "GLOBAL");
-      if (stored) {
-        return NextResponse.json(stored);
-      }
-    }
-
     // 2. Fetch market summary from backend API
     const res = await fetch(`${API_BASE}/api/v1/market/summary`, {
       next: { revalidate: 30 },

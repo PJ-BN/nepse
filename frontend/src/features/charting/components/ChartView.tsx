@@ -245,107 +245,110 @@ export function ChartView({
   );
 
   return (
-    <section className="flex min-w-0 flex-col gap-2 rounded border p-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <SymbolSearch value={symbol} onSelect={onSymbolChange} />
-        <div role="group" aria-label="Resolution" className="flex overflow-hidden rounded border text-xs">
-          {RESOLUTIONS.map((r) => (
-            <button
-              key={r}
-              type="button"
-              aria-pressed={resolution === r}
-              onClick={() => setResolution(r)}
-              className={`px-2 py-1 ${resolution === r ? "bg-foreground text-background" : ""}`}
-            >
-              {RESOLUTION_LABEL[r]}
+    <section className="flex min-w-0 flex-col gap-2 rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2 sm:p-3 shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <SymbolSearch value={symbol} onSelect={onSymbolChange} />
+          <div role="group" aria-label="Resolution" className="flex overflow-hidden rounded-lg border text-xs">
+            {RESOLUTIONS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                aria-pressed={resolution === r}
+                onClick={() => setResolution(r)}
+                className={`px-2 py-1 ${resolution === r ? "bg-foreground text-background font-bold" : "hover:bg-muted"}`}
+              >
+                {RESOLUTION_LABEL[r]}
+              </button>
+            ))}
+          </div>
+          {!isIndex && (
+            <>
+              <div role="group" aria-label="Price adjustment" className="flex overflow-hidden rounded-lg border text-xs">
+                {([true, false] as const).map((v) => (
+                  <button
+                    key={String(v)}
+                    type="button"
+                    aria-pressed={adjusted === v}
+                    onClick={() => setAdjusted(v)}
+                    className={`px-2 py-1 ${adjusted === v ? "bg-foreground text-background font-bold" : "hover:bg-muted"}`}
+                  >
+                    {v ? "ADJ" : "UNADJ"}
+                  </button>
+                ))}
+              </div>
+              <label className="flex items-center gap-1 text-xs cursor-pointer">
+                <input type="checkbox" checked={showVwap} onChange={(e) => setShowVwap(e.target.checked)} />
+                <span className="hidden sm:inline">Broker </span>VWAP
+              </label>
+            </>
+          )}
+          <ReplayBar chart={chart} full={full} idx={replayIdx} onIdx={setReplayIdx} />
+          {compareOpen ? (
+            <span className="flex items-center gap-1 text-xs">
+              <span style={{ color: COMPARE_COLOR }}>vs</span>
+              <SymbolSearch value={compareSymbol} onSelect={setCompareSymbol} />
+              {compare?.pct != null && <span className="text-gray-500">{compare.pct >= 0 ? "+" : ""}{compare.pct.toFixed(1)}%</span>}
+              <button
+                type="button"
+                aria-label="Remove comparison"
+                onClick={() => {
+                  setCompareOpen(false);
+                  setCompareSymbol("");
+                }}
+              >
+                ✕
+              </button>
+            </span>
+          ) : (
+            <button type="button" className="rounded-lg border px-2 py-1 text-xs hover:bg-muted" onClick={() => setCompareOpen(true)}>
+              + Compare
             </button>
-          ))}
+          )}
+          <AlertControl symbol={symbol} last={full.at(-1)?.close} alerts={mine} onAdd={onAddAlert} onRemove={onRemoveAlert} />
+
+          {/* AI Technical Analysis Button */}
+          {symbol && (
+            <button
+              type="button"
+              onClick={handleToggleAiAnalysis}
+              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all shadow-xs ${
+                showAiAnalysis
+                  ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                  : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+              }`}
+              title={isAuthenticated ? "AI Technical Chart Analysis powered by AGY" : "Sign in to unlock AI Technical Analysis"}
+            >
+              <span>{isAuthenticated ? "✨" : "🔒"}</span>
+              <span className="hidden sm:inline">AI Technical Analysis</span>
+              <span className="sm:hidden">AI Analysis</span>
+              {!isAuthenticated && (
+                <span className="rounded bg-primary/20 px-1 py-0.2 text-[9px] font-bold uppercase">
+                  Sign in
+                </span>
+              )}
+              {isAuthenticated && ai.data && (
+                <span className="rounded bg-black/20 dark:bg-white/20 px-1 py-0.2 text-[9px] font-extrabold uppercase">
+                  {ai.data.stance}
+                </span>
+              )}
+            </button>
+          )}
         </div>
-        {!isIndex && (
-          <>
-            <div role="group" aria-label="Price adjustment" className="flex overflow-hidden rounded border text-xs">
-              {([true, false] as const).map((v) => (
-                <button
-                  key={String(v)}
-                  type="button"
-                  aria-pressed={adjusted === v}
-                  onClick={() => setAdjusted(v)}
-                  className={`px-2 py-1 ${adjusted === v ? "bg-foreground text-background" : ""}`}
-                >
-                  {v ? "ADJ" : "UNADJ"}
-                </button>
-              ))}
-            </div>
-            <label className="flex items-center gap-1 text-xs">
-              <input type="checkbox" checked={showVwap} onChange={(e) => setShowVwap(e.target.checked)} />
-              Broker VWAP
-            </label>
-          </>
-        )}
-        <ReplayBar chart={chart} full={full} idx={replayIdx} onIdx={setReplayIdx} />
-        {compareOpen ? (
-          <span className="flex items-center gap-1 text-xs">
-            <span style={{ color: COMPARE_COLOR }}>vs</span>
-            <SymbolSearch value={compareSymbol} onSelect={setCompareSymbol} />
-            {compare?.pct != null && <span className="text-gray-500">{compare.pct >= 0 ? "+" : ""}{compare.pct.toFixed(1)}%</span>}
-            <button
-              type="button"
-              aria-label="Remove comparison"
-              onClick={() => {
-                setCompareOpen(false);
-                setCompareSymbol("");
-              }}
-            >
-              ✕
-            </button>
-          </span>
-        ) : (
-          <button type="button" className="rounded border px-2 py-0.5 text-xs hover:bg-hover" onClick={() => setCompareOpen(true)}>
-            + Compare
-          </button>
-        )}
-        <AlertControl symbol={symbol} last={full.at(-1)?.close} alerts={mine} onAdd={onAddAlert} onRemove={onRemoveAlert} />
 
-        {/* AI Technical Analysis Button */}
-        {symbol && (
-          <button
-            type="button"
-            onClick={handleToggleAiAnalysis}
-            className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold transition-all shadow-xs ${
-              showAiAnalysis
-                ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
-            }`}
-            title={isAuthenticated ? "AI Technical Chart Analysis powered by AGY" : "Sign in to unlock AI Technical Analysis"}
-          >
-            <span>{isAuthenticated ? "✨" : "🔒"}</span>
-            <span>AI Technical Analysis</span>
-            {!isAuthenticated && (
-              <span className="rounded bg-primary/20 px-1 py-0.2 text-[9px] font-bold uppercase">
-                Sign in
-              </span>
-            )}
-            {isAuthenticated && ai.data && (
-              <span className="rounded bg-black/20 dark:bg-white/20 px-1 py-0.2 text-[9px] font-extrabold uppercase">
-                {ai.data.stance}
-              </span>
-            )}
-          </button>
-        )}
-
-        <span className="ml-auto flex items-center gap-3 text-xs">
+        <div className="flex items-center gap-2.5 text-xs shrink-0 ml-auto">
           {symbol && !isIndex && (
             <>
-              <Link href={`/company/${symbol}`} className="text-blue-700 hover:underline">Company</Link>
+              <Link href={`/company/${symbol}`} className="text-primary hover:underline font-medium">Company</Link>
               <NepseLayers chart={chart} symbol={symbol} candles={history.data ?? []} adjusted={adjusted} />
             </>
           )}
           {onRemove && (
-            <button type="button" onClick={onRemove} aria-label="Remove chart" className="text-gray-500 hover:text-red-600">
+            <button type="button" onClick={onRemove} aria-label="Remove chart" className="rounded-md p-1 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600 transition-colors">
               ✕
             </button>
           )}
-        </span>
+        </div>
       </div>
 
       {!symbol && <p className="text-sm text-gray-500">Search a symbol or company to load its chart.</p>}

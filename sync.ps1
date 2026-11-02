@@ -6,7 +6,7 @@
     .\sync.ps1 -Job all
 #>
 param (
-    [ValidateSet("eod", "news", "sebon", "crosscheck", "all")]
+    [ValidateSet("eod", "news", "sebon", "crosscheck", "all", "ai-master")]
     [string]$Job = "eod"
 )
 
@@ -34,6 +34,10 @@ switch ($Job) {
     "all" {
         Write-Host "`n[RUNNING] Executing Full Evening Sync..." -ForegroundColor Yellow
         docker compose run --rm worker sh -c "python -m nepse.workers.main eod && python -m nepse.workers.main news && python -m nepse.workers.main job macro_sebon && python -m nepse.workers.main job eod_crosscheck"
+    }
+    "ai-master" {
+        Write-Host "`n[RUNNING] Executing AI Evening Master Pipeline (Macro + Trade + Watchlist)..." -ForegroundColor Yellow
+        docker compose run --rm worker python -m nepse.workers.main ai-master
     }
 }
 

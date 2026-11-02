@@ -89,6 +89,17 @@ export function UserMenu() {
           </div>
 
           <div className="p-1 text-xs">
+            {user.role === "admin" && (
+              <a
+                href="/admin"
+                onClick={() => setDropdownOpen(false)}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-purple-600 dark:text-purple-400 font-bold transition-colors hover:bg-purple-500/10 cursor-pointer text-left mb-1"
+              >
+                <span>⚙️</span>
+                <span>Admin Control Center</span>
+              </a>
+            )}
+
             <button
               onClick={() => {
                 setDropdownOpen(false);

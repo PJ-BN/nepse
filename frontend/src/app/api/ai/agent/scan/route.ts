@@ -70,20 +70,22 @@ async function fetchDividends(): Promise<RawDividend[]> {
 }
 
 export async function GET(req: NextRequest) {
+  const forceRefresh = req.nextUrl.searchParams.get("refresh") === "true";
+
+  // 1. If not forcing refresh, return stored scan from database immediately to everyone
+  if (!forceRefresh) {
+    const stored = await getStoredAiEvaluation<AgentScanResult>("agent_scan", "LATEST");
+    if (stored) {
+      return NextResponse.json(stored);
+    }
+  }
+
+  // Only force-refresh requests require authentication
   if (!(await checkAiAuth(req))) {
     return unauthorizedAiResponse();
   }
 
   try {
-    const forceRefresh = req.nextUrl.searchParams.get("refresh") === "true";
-
-    // 1. If not forcing refresh, return stored scan from database immediately
-    if (!forceRefresh) {
-      const stored = await getStoredAiEvaluation<AgentScanResult>("agent_scan", "LATEST");
-      if (stored) {
-        return NextResponse.json(stored);
-      }
-    }
 
     const [stocks, announcements, dividends] = await Promise.all([
       fetchScreenerStocks(),
