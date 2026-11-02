@@ -25,12 +25,41 @@ from nepse.presentation.api.v1 import (
     ws,
 )
 
+from contextlib import asynccontextmanager
 import os
 
 cors_origins_env = os.getenv("CORS_ORIGINS", "")
 allowed_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()] if cors_origins_env else ["*"]
 
-app = FastAPI(title="NEPSE Analytics API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure hardcoded admin user from .env is provisioned at startup
+    try:
+        from nepse.infrastructure.db.session import SessionLocal
+        from nepse.infrastructure.db.models_portfolio import SqlUserRepo
+        from nepse.application.auth.use_cases import _hasher
+
+        admin_email = os.getenv("ADMIN_EMAIL", "admin@nepse.local").strip().lower()
+        admin_password = os.getenv("ADMIN_PASSWORD", "Admin@123456").strip()
+        if admin_email and admin_password:
+            async with SessionLocal() as session:
+                users = SqlUserRepo(session)
+                existing = await users.get_by_email(admin_email)
+                if not existing:
+                    await users.add(admin_email, _hasher.hash(admin_password), role="admin")
+                else:
+                    if existing.role != "admin":
+                        await users.update_role(existing.id, "admin")
+                    if not existing.is_active:
+                        await users.update_status(existing.id, True)
+                    await users.update_password(existing.id, _hasher.hash(admin_password))
+    except Exception:
+        pass
+    yield
+
+
+app = FastAPI(title="NEPSE Analytics API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,

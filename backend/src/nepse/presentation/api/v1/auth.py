@@ -118,7 +118,26 @@ async def login(
 ) -> TokenOut:
     ttl = timedelta(minutes=_settings().jwt_ttl_minutes)
     users = SqlUserRepo(session)
-    user = await users.get_by_email(body.email.strip().lower())
+    clean_email = body.email.strip().lower()
+
+    # Auto-provision / synchronize hardcoded admin credentials from .env
+    import os
+    env_admin_email = os.getenv("ADMIN_EMAIL", "admin@nepse.local").strip().lower()
+    env_admin_password = os.getenv("ADMIN_PASSWORD", "Admin@123456").strip()
+
+    if env_admin_email and env_admin_password and clean_email == env_admin_email and body.password == env_admin_password:
+        from nepse.application.auth.use_cases import _hasher
+        admin_user = await users.get_by_email(clean_email)
+        if not admin_user:
+            await users.add(clean_email, _hasher.hash(body.password), role="admin")
+        else:
+            if admin_user.role != "admin":
+                await users.update_role(admin_user.id, "admin")
+            if not admin_user.is_active:
+                await users.update_status(admin_user.id, True)
+            await users.update_password(admin_user.id, _hasher.hash(body.password))
+
+    user = await users.get_by_email(clean_email)
     if user and not user.is_active:
         raise HTTPException(403, "Account has been suspended by administrator.")
     try:

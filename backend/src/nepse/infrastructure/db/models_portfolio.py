@@ -105,6 +105,14 @@ class SqlUserRepo:
         await self.session.commit()
         return True
 
+    async def update_password(self, user_id: int, new_password_hash: str) -> bool:
+        row = await self.session.scalar(select(UserRow).where(UserRow.id == user_id))
+        if not row:
+            return False
+        row.password_hash = new_password_hash
+        await self.session.commit()
+        return True
+
     async def update_last_login(self, user_id: int) -> None:
         row = await self.session.scalar(select(UserRow).where(UserRow.id == user_id))
         if row:
