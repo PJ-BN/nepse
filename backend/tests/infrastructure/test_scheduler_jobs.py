@@ -29,7 +29,16 @@ def by_id(s):
 
 
 def test_all_jobs_registered(scheduler):
-    assert set(by_id(scheduler)) == {"live_poll", "eod", "screener", "a", "b", "announcements", "seed_snapshot"}
+    assert set(by_id(scheduler)) == {
+        "live_poll",
+        "eod",
+        "screener",
+        "a",
+        "b",
+        "announcements",
+        "seed_snapshot",
+        "daily_evening_ai_master",
+    }
     assert str(scheduler.timezone) == "Asia/Kathmandu"
 
 
