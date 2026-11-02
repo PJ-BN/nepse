@@ -12,12 +12,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # 1. Extend Users table for Role-Based Access Control (RBAC)
-    op.execute("""
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user';
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
-    """)
+    # 1. Extend Users table for Role-Based Access Control (RBAC) - single statements
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user'")
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true")
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ")
 
     # 2. Data Sources Registry & Connector Settings
     op.execute("""
@@ -35,7 +33,7 @@ def upgrade() -> None:
             last_error_msg TEXT,
             config JSONB DEFAULT '{}'::jsonb,
             updated_at TIMESTAMPTZ DEFAULT NOW()
-        );
+        )
     """)
 
     # Seed default data sources
@@ -48,7 +46,7 @@ def upgrade() -> None:
         ('sebon', 'SEBON Regulatory Filings', 'macro', 1, true, '{"description": "Securities Board of Nepal IPO, Right Share, and Debenture pipeline"}'::jsonb),
         ('nrb', 'Nepal Rastra Bank Macro Data', 'macro', 1, true, '{"description": "Macroeconomic bulletins, policy rates, liquidity, and inflation"}'::jsonb),
         ('news_sources', 'Multi-Source Financial News Aggregator', 'news', 1, true, '{"description": "Aggregator for Bizshala, OnlineKhabar, ShareSansar, and Abhiyan"}'::jsonb)
-        ON CONFLICT (id) DO NOTHING;
+        ON CONFLICT (id) DO NOTHING
     """)
 
     # 3. Dynamic Schedules (Admin Editable)
@@ -67,7 +65,7 @@ def upgrade() -> None:
             last_duration_sec NUMERIC(8, 2) DEFAULT 0,
             parameters JSONB DEFAULT '{}'::jsonb,
             updated_at TIMESTAMPTZ DEFAULT NOW()
-        );
+        )
     """)
 
     # Seed scheduled jobs
@@ -77,10 +75,10 @@ def upgrade() -> None:
         ('eod_market_sync', 'NEPSE EOD Market Data Ingestion', 'Pulls official closing prices, volume, index bars, and floorsheet', '15 15 * * 0-4', '15:15', 'sun,mon,tue,wed,thu', true),
         ('news_macro_sync', 'Financial News & Macro Pulse Sync', 'Ingests latest news, circulars, and recalculates market impacts', '30 15 * * 0-4', '15:30', 'sun,mon,tue,wed,thu', true),
         ('sebon_pipeline_sync', 'SEBON Regulatory Filings Sync', 'Parses SEBON pipeline for IPO and Right share updates', '45 15 * * 0-4', '15:45', 'sun,mon,tue,wed,thu', true)
-        ON CONFLICT (id) DO NOTHING;
+        ON CONFLICT (id) DO NOTHING
     """)
 
-    # 4. Job Execution & Audit Logs
+    # 4. Job Execution & Audit Logs (each command in separate op.execute)
     op.execute("""
         CREATE TABLE IF NOT EXISTS job_execution_logs (
             id BIGSERIAL PRIMARY KEY,
@@ -95,10 +93,10 @@ def upgrade() -> None:
             cost_usd NUMERIC(10, 6) DEFAULT 0,
             summary JSONB DEFAULT '{}'::jsonb,
             error_details TEXT
-        );
-        CREATE INDEX IF NOT EXISTS idx_job_execution_logs_job_id ON job_execution_logs(job_id);
-        CREATE INDEX IF NOT EXISTS idx_job_execution_logs_started_at ON job_execution_logs(started_at DESC);
+        )
     """)
+    op.execute("CREATE INDEX IF NOT EXISTS idx_job_execution_logs_job_id ON job_execution_logs(job_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_job_execution_logs_started_at ON job_execution_logs(started_at DESC)")
 
     # 5. AI Agent Configurations & Prompt Templates
     op.execute("""
@@ -113,7 +111,7 @@ def upgrade() -> None:
             system_prompt TEXT NOT NULL,
             user_prompt_template TEXT NOT NULL,
             updated_at TIMESTAMPTZ DEFAULT NOW()
-        );
+        )
     """)
 
     op.execute("""
@@ -129,7 +127,7 @@ def upgrade() -> None:
         ('ai_watchlist', 'AI Watchlist & Conviction Picks Agent', 'openrouter', 'deepseek/deepseek-chat', true, 0.1, 2048,
         'You are the Institutional Portfolio Strategist for NEPSE equities. Classify screened stocks into 4 strategic baskets: Breakouts, Smart Money Accumulation, Dividend/Valuation Plays, and Oversold Rebounds. Strict JSON.',
         'CANDIDATES:\n{candidates_csv}\nReturn top classified picks in JSON: {"topBuys": ["SYM"], "topWatchlist": ["SYM"], "topSells": ["SYM"], "executiveBrief": "string", "topSectorPick": "string", "tacticalStrategy": "string"}')
-        ON CONFLICT (agent_id) DO NOTHING;
+        ON CONFLICT (agent_id) DO NOTHING
     """)
 
     # 6. Global System Settings (Key-Value)
@@ -139,7 +137,7 @@ def upgrade() -> None:
             value JSONB NOT NULL,
             description TEXT,
             updated_at TIMESTAMPTZ DEFAULT NOW()
-        );
+        )
     """)
 
     op.execute("""
@@ -148,18 +146,16 @@ def upgrade() -> None:
         ('openrouter_default_model', '{"model": "deepseek/deepseek-chat"}'::jsonb, 'Default OpenRouter model slug'),
         ('ai_token_budget_monthly', '{"limit_usd": 10.0, "current_month_cost": 0.0}'::jsonb, 'Monthly USD safety spend cap for AI'),
         ('ai_auto_evening_time', '{"time_npt": "16:00", "enabled": true}'::jsonb, 'Automated evening pipeline execution time in NPT')
-        ON CONFLICT (key) DO NOTHING;
+        ON CONFLICT (key) DO NOTHING
     """)
 
 
 def downgrade() -> None:
-    op.execute("DROP TABLE IF EXISTS system_settings;")
-    op.execute("DROP TABLE IF EXISTS ai_agent_configs;")
-    op.execute("DROP TABLE IF EXISTS job_execution_logs;")
-    op.execute("DROP TABLE IF EXISTS scheduled_jobs;")
-    op.execute("DROP TABLE IF EXISTS data_sources;")
-    op.execute("""
-        ALTER TABLE users DROP COLUMN IF EXISTS last_login_at;
-        ALTER TABLE users DROP COLUMN IF EXISTS is_active;
-        ALTER TABLE users DROP COLUMN IF EXISTS role;
-    """)
+    op.execute("DROP TABLE IF EXISTS system_settings")
+    op.execute("DROP TABLE IF EXISTS ai_agent_configs")
+    op.execute("DROP TABLE IF EXISTS job_execution_logs")
+    op.execute("DROP TABLE IF EXISTS scheduled_jobs")
+    op.execute("DROP TABLE IF EXISTS data_sources")
+    op.execute("ALTER TABLE users DROP COLUMN IF EXISTS last_login_at")
+    op.execute("ALTER TABLE users DROP COLUMN IF EXISTS is_active")
+    op.execute("ALTER TABLE users DROP COLUMN IF EXISTS role")

@@ -19,7 +19,8 @@ jobs:
           script: |
             set -e
             cd ~/nepse
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             docker compose up -d --build
             docker compose exec -T api alembic upgrade head
             echo "Deployment completed successfully!"
