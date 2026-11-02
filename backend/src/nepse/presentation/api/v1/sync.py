@@ -8,9 +8,10 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 
+from nepse.application.auth.ports import User
 from nepse.application.ingestion.crosscheck import crosscheck_eod
 from nepse.application.ingestion.eod import run_eod
 from nepse.application.macro.use_cases import ingest_sebon
@@ -28,6 +29,7 @@ from nepse.infrastructure.upstream.nepse.client import NepseClient, new_http_cli
 from nepse.infrastructure.upstream.nepse.wasm_token import TokenSolver
 from nepse.infrastructure.upstream.news_sources import MultiSourceNewsAggregator
 from nepse.infrastructure.upstream.sebon import SebonClient
+from nepse.presentation.api.v1.auth import require_admin
 
 log = logging.getLogger("nepse.sync")
 router = APIRouter(prefix="/api/v1/sync", tags=["sync"])
@@ -42,7 +44,7 @@ _last_sync: dict[str, Any] = {
 
 
 @router.get("/status")
-async def get_sync_status() -> dict[str, Any]:
+async def get_sync_status(admin: User = Depends(require_admin)) -> dict[str, Any]:
     """Return database ingestion status, latest trade date, record counts, and active sync state."""
     async with SessionLocal() as session:
         max_date_res = await session.execute(text("SELECT MAX(trade_date) FROM ohlcv_daily"))
@@ -82,7 +84,7 @@ async def get_sync_status() -> dict[str, Any]:
 
 
 @router.post("/eod")
-async def sync_eod() -> dict[str, Any]:
+async def sync_eod(admin: User = Depends(require_admin)) -> dict[str, Any]:
     """Manually ingest today's NEPSE closing prices, index bars, floorsheet, and refresh screener."""
     if _sync_lock.locked():
         raise HTTPException(status_code=409, detail="A data sync task is currently in progress. Please wait.")
@@ -121,7 +123,7 @@ async def sync_eod() -> dict[str, Any]:
 
 
 @router.post("/news")
-async def sync_news() -> dict[str, Any]:
+async def sync_news(admin: User = Depends(require_admin)) -> dict[str, Any]:
     """Manually pull latest financial news, regulatory circulars, and compute AI market impacts."""
     if _sync_lock.locked():
         raise HTTPException(status_code=409, detail="A data sync task is currently in progress. Please wait.")
@@ -152,7 +154,7 @@ async def sync_news() -> dict[str, Any]:
 
 
 @router.post("/sebon")
-async def sync_sebon() -> dict[str, Any]:
+async def sync_sebon(admin: User = Depends(require_admin)) -> dict[str, Any]:
     """Manually parse SEBON pipeline for IPO and Right-Share applications/approvals."""
     if _sync_lock.locked():
         raise HTTPException(status_code=409, detail="A data sync task is currently in progress. Please wait.")
@@ -183,7 +185,7 @@ async def sync_sebon() -> dict[str, Any]:
 
 
 @router.post("/crosscheck")
-async def sync_crosscheck() -> dict[str, Any]:
+async def sync_crosscheck(admin: User = Depends(require_admin)) -> dict[str, Any]:
     """Crosscheck today's NEPSE closing prices against ShareSansar."""
     if _sync_lock.locked():
         raise HTTPException(status_code=409, detail="A data sync task is currently in progress. Please wait.")
@@ -218,7 +220,7 @@ async def sync_crosscheck() -> dict[str, Any]:
 
 
 @router.post("/all")
-async def sync_all() -> dict[str, Any]:
+async def sync_all(admin: User = Depends(require_admin)) -> dict[str, Any]:
     """Run full evening sync pipeline: EOD + News + SEBON Pipeline + Crosscheck."""
     if _sync_lock.locked():
         raise HTTPException(status_code=409, detail="A data sync task is currently in progress. Please wait.")

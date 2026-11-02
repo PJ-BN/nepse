@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useAuth } from "@/features/auth";
 import {
   fetchSyncStatus,
   triggerSyncAll,
@@ -12,7 +13,13 @@ import {
 } from "../api";
 import type { SyncResult, SyncStatus } from "../types";
 
-export function DataSyncModal() {
+export interface DataSyncModalProps {
+  triggerLabel?: string;
+  triggerClassName?: string;
+}
+
+export function DataSyncModal({ triggerLabel, triggerClassName }: DataSyncModalProps = {}) {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [status, setStatus] = useState<SyncStatus | null>(null);
@@ -73,13 +80,21 @@ export function DataSyncModal() {
     return status.latest_trade_date === today;
   };
 
+  // Guard: Only platform administrators can view or trigger manual sync
+  if (!user || user.role !== "admin") {
+    return null;
+  }
+
   return (
     <>
-      {/* Navbar Trigger Button */}
+      {/* Trigger Button */}
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition hover:bg-gray-100 hover:text-foreground dark:hover:bg-neutral-800"
+        className={
+          triggerClassName ??
+          "flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition hover:bg-gray-100 hover:text-foreground dark:hover:bg-neutral-800 cursor-pointer"
+        }
         title="Manual Data Sync & Ingestion"
       >
         <svg
@@ -96,7 +111,7 @@ export function DataSyncModal() {
         >
           <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
         </svg>
-        <span className="hidden md:inline">Sync Data</span>
+        <span>{triggerLabel ?? "Sync Data"}</span>
         {status?.latest_trade_date && (
           <span
             className={`h-2 w-2 rounded-full ${

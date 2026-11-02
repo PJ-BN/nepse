@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, ReactNode } from "react";
 import { ThemeToggle } from "./ThemeToggle";
-import { DataSyncModal } from "@/features/sync";
 import { UserMenu, useAuth } from "@/features/auth";
 
 interface NavItem {
@@ -390,7 +389,6 @@ export function Sidebar() {
               <div className="flex items-center justify-between px-1">
                 <span className="text-[11px] font-medium text-muted-foreground">Options</span>
                 <div className="flex items-center gap-1.5">
-                  <DataSyncModal />
                   <ThemeToggle />
                 </div>
               </div>
@@ -432,7 +430,6 @@ export function Sidebar() {
           <div className="flex items-center justify-between px-1">
             <span className="text-[11px] font-medium text-muted-foreground">Preferences</span>
             <div className="flex items-center gap-1.5">
-              <DataSyncModal />
               <ThemeToggle />
             </div>
           </div>

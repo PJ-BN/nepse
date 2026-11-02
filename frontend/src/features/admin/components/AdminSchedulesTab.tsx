@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchExecutionLogs, fetchSchedules, runJobManually, updateSchedule } from "../api";
+import { DataSyncModal } from "@/features/sync";
 
 export function AdminSchedulesTab() {
   const queryClient = useQueryClient();
@@ -76,6 +77,10 @@ export function AdminSchedulesTab() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <DataSyncModal
+              triggerLabel="Manual Ingestion Modal"
+              triggerClassName="flex items-center gap-2 rounded-xl border border-border/80 bg-background/80 px-4 py-2.5 text-xs font-bold text-foreground transition-all hover:bg-muted/40 cursor-pointer shadow-xs"
+            />
             <button
               onClick={() => handleRunNow("daily_evening_ai_master")}
               disabled={Boolean(runningJobId)}
@@ -97,7 +102,27 @@ export function AdminSchedulesTab() {
         )}
       </div>
 
-      {/* 2. Scheduled Jobs Table */}
+      {/* 2. Manual Data Ingestion & Live Sync Room */}
+      <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🔄</span>
+            <h4 className="text-sm font-bold text-foreground">Manual Data Ingestion & Sync Center</h4>
+            <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
+              ADMIN CONTROL
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
+            Directly trigger individual ingestion jobs for EOD closing prices, floorsheet trades, financial news, SEBON filings, or full crosscheck with live streaming logs.
+          </p>
+        </div>
+        <DataSyncModal
+          triggerLabel="Launch Ingestion Center"
+          triggerClassName="shrink-0 flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground transition-all hover:opacity-90 cursor-pointer shadow-xs"
+        />
+      </div>
+
+      {/* 3. Scheduled Jobs Table */}
       <div className="space-y-3">
         <h4 className="text-sm font-bold text-foreground">Configured Schedules (Nepal Time - NPT)</h4>
         <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
@@ -183,7 +208,7 @@ export function AdminSchedulesTab() {
         </div>
       </div>
 
-      {/* 3. Execution & Token Audit Logs */}
+      {/* 4. Execution & Token Audit Logs */}
       <div className="space-y-3">
         <h4 className="text-sm font-bold text-foreground">Recent Pipeline Executions & Token Logs</h4>
         <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
