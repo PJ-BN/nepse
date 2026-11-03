@@ -6,3 +6,4 @@ export * from "./hooks/useCompanyAi";
 export * from "./hooks/useMarketAi";
 export * from "./formatTimestamp";
 export * from "./dbStorage";
+export * from "./marketScanService";

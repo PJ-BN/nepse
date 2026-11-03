@@ -102,20 +102,20 @@ export const DEFAULT_UNIVERSE: RawStockSnapshot[] = [
   {
     symbol: "NABIL",
     sector: "Commercial Banks",
-    close: 585,
-    change_pct: 1.74,
+    close: 551,
+    change_pct: 0.33,
     volume: 184500,
     turnover: 107932500,
     market_cap: 158000000000,
-    rsi_14: 62.4,
-    sma_20: 565,
-    sma_50: 540,
-    sma_200: 512,
+    rsi_14: 78.1,
+    sma_20: 535,
+    sma_50: 510,
+    sma_200: 480,
     atr_pct: 2.1,
-    high_52w: 640,
-    low_52w: 470,
+    high_52w: 557,
+    low_52w: 461.9,
     rsi_bull_div: 0,
-    top3_broker_accum_15d_pct: 44.5,
+    top3_broker_accum_15d_pct: 45.6,
     eps: 28.5,
     bvps: 224,
     pe: 20.5,
@@ -564,7 +564,7 @@ export const DEFAULT_UNIVERSE: RawStockSnapshot[] = [
 // Sample corporate announcements matching NEPSE symbols
 export const DEFAULT_ANNOUNCEMENTS: RawAnnouncement[] = [
   {
-    title: "Nabil Bank Limited (NABIL) proposes 10.0% Bonus Share and 0.53% Cash Dividend for FY 2080/81",
+    title: "Nabil Bank Limited (NABIL) proposes 5.0% Bonus Share and 10.8% Cash Dividend for FY 2080/81",
     url: "https://sharesansar.com/announcement/nabil-dividend-proposal",
     published_on: "2026-10-24",
   },
@@ -601,7 +601,7 @@ export const DEFAULT_ANNOUNCEMENTS: RawAnnouncement[] = [
 ];
 
 export const DEFAULT_DIVIDENDS: RawDividend[] = [
-  { symbol: "NABIL", bonus_pct: 10.0, cash_pct: 0.53, book_closure_date: "2026-11-12", announced_on: "2026-10-24" },
+  { symbol: "NABIL", bonus_pct: 5.0, cash_pct: 10.8, book_closure_date: "2026-09-30", announced_on: "2026-09-15" },
   { symbol: "CHCL", bonus_pct: 8.0, cash_pct: 2.0, book_closure_date: "2026-11-05", announced_on: "2026-10-23" },
   { symbol: "NICL", bonus_pct: 10.0, cash_pct: 2.5, book_closure_date: "2026-11-18", announced_on: "2026-10-20" },
   { symbol: "CIT", bonus_pct: 5.0, cash_pct: 8.5, book_closure_date: "2026-11-25", announced_on: "2026-10-18" },
@@ -989,15 +989,19 @@ export function answerAgentQuery(
   const q = query.trim().toLowerCase();
   const all = scanResult.stocks;
 
-  // 1. Specific symbol mentioned
-  for (const s of all) {
-    if (q.includes(s.symbol.toLowerCase())) {
+  // 1. Specific symbol mentioned (match whole words, checking longer symbols first)
+  const qUpper = query.toUpperCase();
+  const sortedBySymbolLen = [...all].sort((a, b) => b.symbol.length - a.symbol.length);
+  for (const s of sortedBySymbolLen) {
+    const rx = new RegExp(`(^|[^A-Z0-9])${s.symbol}([^A-Z0-9]|$)`);
+    if (rx.test(qUpper) || (s.name && q.includes(s.name.toLowerCase()))) {
       const isStarred = userWatchlistSymbols.includes(s.symbol);
       let thesis = `### ${s.symbol} (${s.name})\n\n`;
       thesis += `**Agent Recommendation:** **${s.action}** (Confluence Score: **${s.confidenceScore}/100**)\n\n`;
+      thesis += `**Current LTP:** NPR ${s.close} (${s.changePct >= 0 ? "+" : ""}${s.changePct}%)\n\n`;
       thesis += `**Key Rationale:** ${s.headlineReason}\n\n`;
       thesis += `${s.detailedAnalysis}\n\n`;
-      if (s.tradePlan) {
+      if (s.tradePlan && s.action === "BUY") {
         thesis += `**Execution Plan:**\n- **Entry Zone:** NPR ${s.tradePlan.entryMin} - ${s.tradePlan.entryMax}\n- **Stop Loss:** NPR ${s.tradePlan.stopLoss} (${s.tradePlan.riskPct}% risk)\n- **Target 1:** NPR ${s.tradePlan.target1} (+${s.tradePlan.target1UpsidePct}%)\n- **Target 2:** NPR ${s.tradePlan.target2} (+${s.tradePlan.target2UpsidePct}%)\n- **Risk/Reward:** ${s.tradePlan.riskReward}\n\n`;
       }
       if (s.catalysts.length > 0) {

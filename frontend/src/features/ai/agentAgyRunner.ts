@@ -84,24 +84,59 @@ export async function answerQueryWithAgy(
   userWatchlistSymbols: string[] = [],
   timeoutMs = 45000
 ): Promise<string | null> {
-  const topBuys = scan.topBuys.slice(0, 5).map((b) => `${b.symbol} (NPR ${b.close}, score: ${b.confidenceScore}, ${b.headlineReason})`).join("; ");
+  const qUpper = query.toUpperCase();
+  // Identify any specific stocks mentioned in the user query (whole-word check)
+  const mentionedStocks = scan.stocks.filter((s) => {
+    const rx = new RegExp(`(^|[^A-Z0-9])${s.symbol}([^A-Z0-9]|$)`);
+    return rx.test(qUpper);
+  });
+
+  let targetDetails = "";
+  if (mentionedStocks.length > 0) {
+    targetDetails =
+      `\nSPECIFIC EQUITIES MENTIONED IN QUERY:\n` +
+      mentionedStocks
+        .map(
+          (s) => `
+- ${s.symbol} (${s.name}, Sector: ${s.sector}):
+  * Current LTP: NPR ${s.close} (${s.changePct >= 0 ? "+" : ""}${s.changePct}%)
+  * Model Action Rating: ${s.action} (Confluence Score: ${s.confidenceScore}/100)
+  * Headline Rationale: ${s.headlineReason}
+  * Technical Status: RSI(14)=${s.rsi14.toFixed(1)}, SMA Position=${s.smaPosition}, 52W Range=${s.range52wPct}% (52W High: NPR ${s.high52w}, 52W Low: NPR ${s.low52w})
+  * Smart Money Flow: Top 3 broker accumulation ${s.brokerAccumulationPct.toFixed(1)}%
+  * Catalysts: ${s.catalysts.map((c) => c.headline).join("; ") || "None"}
+  ${s.tradePlan ? `* Trade Plan: Entry NPR ${s.tradePlan.entryMin} - ${s.tradePlan.entryMax}, Stop Loss NPR ${s.tradePlan.stopLoss}, Target 1 NPR ${s.tradePlan.target1}` : ""}`
+        )
+        .join("\n");
+  }
+
+  const topBuys = scan.topBuys
+    .slice(0, 5)
+    .map((b) => `${b.symbol} (NPR ${b.close}, ${b.action}, score: ${b.confidenceScore}, ${b.headlineReason})`)
+    .join("; ");
+  const topSells = scan.topSells
+    .slice(0, 5)
+    .map((s) => `${s.symbol} (NPR ${s.close}, ${s.action}, score: ${s.confidenceScore}, ${s.headlineReason})`)
+    .join("; ");
   const userList = userWatchlistSymbols.join(", ");
 
   const prompt = `You are the NEPSE AI Trading & Watchlist Agent integrated in the NEPSE Analytics platform.
 The user is asking: "${query}"
 
-CONTEXT:
-- Total monitored stocks: ${scan.stocks.length}
+LIVE MARKET CONTEXT (NEPSE Real-Time Data):
+- Total Monitored Stocks: ${scan.stocks.length}
 - Current Market Regime: ${scan.briefing.marketRegime}
-- Top Recommended Buys: ${topBuys}
+- Top Recommended Buys: ${topBuys || "None"}
+- Top Overbought / Caution / Sells: ${topSells || "None"}
 - User's Personal Watchlist: ${userList || "None saved yet"}
+${targetDetails}
 
 INSTRUCTIONS:
-- Directly answer the user's question with actionable, specific stock symbols and reasons.
-- Categorize recommendations clearly: which to WATCHLIST, which to BUY, which to SELL.
-- Highlight specific entry levels, catalysts (dividends, broker accumulation), or risk warnings.
-- Keep the response concise, authoritative, and formatted cleanly in markdown with bullet points.
-- Do NOT output disclaimers or generic chatter. Jump straight to the analysis.`;
+- You MUST strictly use the exact stock prices (LTP), ratings (BUY, SELL, WATCHLIST), technical metrics, and catalysts provided in the LIVE MARKET CONTEXT above.
+- NEVER invent or assume different prices, dividend percentages, or ratings that contradict the CONTEXT.
+- If a stock is rated SELL or AVOID (e.g. overbought with high RSI), explicitly advise caution/taking profits and explain why based on its actual metrics.
+- If a stock is rated BUY, provide its clear entry zone and target from the context.
+- Keep the response authoritative, structured in markdown, and concise. Jump straight into the analysis without disclaimers.`;
 
   try {
     const raw = await runAgyPrompt(prompt, timeoutMs);

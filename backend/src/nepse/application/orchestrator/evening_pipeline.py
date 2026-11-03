@@ -293,7 +293,7 @@ async def run_evening_pipeline(triggered_by: str = "scheduler") -> dict[str, Any
 
                 try:
                     await ai_repo.upsert_evaluation(
-                        feature="agent_scan",
+                        feature="ai_watchlist",
                         entity_key="LATEST",
                         payload=watch_payload,
                         source=watch_payload["source"],

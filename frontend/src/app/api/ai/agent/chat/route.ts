@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { answerAgentQuery, DEFAULT_ANNOUNCEMENTS, DEFAULT_DIVIDENDS, DEFAULT_UNIVERSE, scanMarketUniverse } from "@/features/ai/agentEngine";
+import { answerAgentQuery } from "@/features/ai/agentEngine";
 import { answerQueryWithAgy } from "@/features/ai/agentAgyRunner";
+import { getLatestAgentScan } from "@/features/ai/marketScanService";
 import { checkAiAuth, unauthorizedAiResponse } from "../../authCheck";
 
 export async function POST(req: NextRequest) {
@@ -68,8 +69,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Query is required" }, { status: 400 });
     }
 
-    // Run rapid scan
-    const scan = scanMarketUniverse(DEFAULT_UNIVERSE, DEFAULT_ANNOUNCEMENTS, DEFAULT_DIVIDENDS);
+    // Load latest real comprehensive agent market scan (from database or live screener)
+    const scan = await getLatestAgentScan(false);
 
     // First get deterministic matches & recommendations
     const heuristic = answerAgentQuery(query, scan, watchlistSymbols);
