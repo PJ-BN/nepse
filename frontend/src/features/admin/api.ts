@@ -155,8 +155,14 @@ export async function runJobManually(jobId: string): Promise<Record<string, unkn
     headers: authHeaders(),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Manual execution failed");
+    let errMsg = "";
+    try {
+      const err = await res.json();
+      errMsg = err.detail || err.message || err.error || (typeof err === "string" ? err : JSON.stringify(err));
+    } catch {
+      errMsg = `HTTP ${res.status}: ${res.statusText || "Request failed"}`;
+    }
+    throw new Error(errMsg || "Manual execution failed");
   }
   return res.json();
 }

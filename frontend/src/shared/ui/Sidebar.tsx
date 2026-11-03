@@ -331,7 +331,7 @@ export function Sidebar() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <UserMenu />
+          <UserMenu direction="down" />
         </div>
       </header>
 
@@ -347,9 +347,9 @@ export function Sidebar() {
           />
 
           {/* Drawer content */}
-          <div className="relative flex w-72 max-w-[85vw] flex-col bg-card border-r border-border shadow-2xl animate-in slide-in-from-left duration-200">
+          <div className="relative flex w-72 max-w-[85vw] h-full max-h-[100dvh] flex-col bg-card border-r border-border shadow-2xl animate-in slide-in-from-left duration-200 overflow-hidden">
             {/* Top header of drawer */}
-            <div className="flex items-center justify-between border-b border-border/80 px-4 py-3.5">
+            <div className="shrink-0 flex items-center justify-between border-b border-border/80 px-4 py-3.5">
               <Link
                 href="/"
                 onClick={() => setMobileOpen(false)}
@@ -380,12 +380,12 @@ export function Sidebar() {
             </div>
 
             {/* Scrollable links */}
-            <div className="flex-1 overflow-y-auto p-3.5 [scrollbar-width:thin]">
+            <div className="flex-1 min-h-0 overflow-y-auto p-3.5 [scrollbar-width:thin]">
               <NavList onSelect={() => setMobileOpen(false)} />
             </div>
 
             {/* Bottom Footer */}
-            <div className="border-t border-border/80 p-3 bg-muted/20 flex flex-col gap-2.5">
+            <div className="shrink-0 border-t border-border/80 p-3 pb-4 bg-muted/20 flex flex-col gap-2.5 mt-auto">
               <div className="flex items-center justify-between px-1">
                 <span className="text-[11px] font-medium text-muted-foreground">Options</span>
                 <div className="flex items-center gap-1.5">
@@ -393,7 +393,7 @@ export function Sidebar() {
                 </div>
               </div>
               <div className="w-full">
-                <UserMenu />
+                <UserMenu direction="up" />
               </div>
             </div>
           </div>
@@ -403,9 +403,9 @@ export function Sidebar() {
       {/* ======================================================== */}
       {/* 3. Desktop Left Sidebar (Visible on md and larger)      */}
       {/* ======================================================== */}
-      <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card/95 backdrop-blur-md h-screen sticky top-0 shrink-0 z-30 select-none">
+      <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card/95 backdrop-blur-md h-screen h-[100dvh] max-h-screen max-h-[100dvh] sticky top-0 shrink-0 z-30 select-none overflow-hidden">
         {/* Brand Header */}
-        <div className="border-b border-border/80 px-4 py-4">
+        <div className="shrink-0 border-b border-border/80 px-4 py-4">
           <Link href="/" className="flex items-center gap-2.5 group">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-background shadow-xs group-hover:scale-105 transition-transform">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -421,12 +421,12 @@ export function Sidebar() {
         </div>
 
         {/* Scrollable Navigation List */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 [scrollbar-width:thin]">
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-4 [scrollbar-width:thin]">
           <NavList />
         </div>
 
         {/* Sticky Desktop Footer */}
-        <div className="border-t border-border/80 p-3 bg-muted/15 flex flex-col gap-2.5">
+        <div className="shrink-0 border-t border-border/80 p-3 pb-3.5 bg-muted/15 flex flex-col gap-2.5 mt-auto">
           <div className="flex items-center justify-between px-1">
             <span className="text-[11px] font-medium text-muted-foreground">Preferences</span>
             <div className="flex items-center gap-1.5">
@@ -434,7 +434,7 @@ export function Sidebar() {
             </div>
           </div>
           <div className="w-full">
-            <UserMenu />
+            <UserMenu direction="up" />
           </div>
         </div>
       </aside>

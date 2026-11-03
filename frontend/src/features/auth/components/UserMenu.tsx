@@ -3,7 +3,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 
-export function UserMenu() {
+interface UserMenuProps {
+  direction?: "up" | "down";
+}
+
+export function UserMenu({ direction = "down" }: UserMenuProps) {
   const { isAuthenticated, user, openAuthModal, logout, isLoading } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -20,7 +24,7 @@ export function UserMenu() {
 
   if (isLoading) {
     return (
-      <div className="h-8 w-20 animate-pulse rounded-lg bg-muted/40" />
+      <div className={`h-8 animate-pulse rounded-lg bg-muted/40 ${direction === "up" ? "w-full" : "w-20"}`} />
     );
   }
 
@@ -28,7 +32,9 @@ export function UserMenu() {
     return (
       <button
         onClick={() => openAuthModal("login")}
-        className="flex items-center gap-1.5 rounded-lg border border-border/80 bg-surface/50 px-3 py-1.5 text-xs font-semibold text-foreground transition-all hover:bg-muted/40 hover:border-accent/40 active:scale-95 cursor-pointer"
+        className={`flex items-center gap-1.5 rounded-lg border border-border/80 bg-surface/50 px-3 py-1.5 text-xs font-semibold text-foreground transition-all hover:bg-muted/40 hover:border-accent/40 active:scale-95 cursor-pointer ${
+          direction === "up" ? "w-full justify-center" : ""
+        }`}
       >
         <svg
           width="14"
@@ -52,16 +58,22 @@ export function UserMenu() {
   const shortEmail = user.email.length > 18 ? `${user.email.slice(0, 16)}...` : user.email;
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className={`relative ${direction === "up" ? "w-full" : ""}`} ref={menuRef}>
       <button
         onClick={() => setDropdownOpen(!dropdownOpen)}
-        className="flex items-center gap-2 rounded-lg border border-border/70 bg-surface/80 px-2.5 py-1 text-xs font-medium text-foreground transition-all hover:bg-muted/40 focus:outline-none cursor-pointer"
+        className={`flex items-center rounded-lg border border-border/70 bg-surface/80 px-2.5 py-1.5 text-xs font-medium text-foreground transition-all hover:bg-muted/40 focus:outline-none cursor-pointer ${
+          direction === "up" ? "w-full justify-between" : "gap-2"
+        }`}
         aria-expanded={dropdownOpen}
       >
-        <span className="grid h-6 w-6 place-items-center rounded-full bg-accent/20 text-accent font-bold text-[10px]">
-          {emailInitial}
-        </span>
-        <span className="hidden sm:inline max-w-[120px] truncate">{shortEmail}</span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent/20 text-accent font-bold text-[10px]">
+            {emailInitial}
+          </span>
+          <span className={`${direction === "up" ? "inline truncate max-w-[130px]" : "hidden sm:inline max-w-[120px] truncate"}`}>
+            {shortEmail}
+          </span>
+        </div>
         <svg
           width="12"
           height="12"
@@ -71,14 +83,20 @@ export function UserMenu() {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={`transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`}
+          className={`shrink-0 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`}
         >
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>
 
       {dropdownOpen && (
-        <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-border/80 bg-card p-2 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150">
+        <div
+          className={`absolute z-50 rounded-2xl border border-border/80 bg-card p-2 shadow-2xl animate-in fade-in duration-150 ${
+            direction === "up"
+              ? "bottom-full mb-2 left-0 right-0 sm:right-auto sm:w-60 slide-in-from-bottom-2"
+              : "top-full mt-2 right-0 w-56 zoom-in-95"
+          }`}
+        >
           <div className="border-b border-border/50 px-3 py-2">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Logged In As</p>
             <p className="truncate text-xs font-bold text-foreground mt-0.5">{user.email}</p>
