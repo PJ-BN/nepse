@@ -35,16 +35,34 @@ _pipeline_lock = asyncio.Lock()
 
 async def get_configured_openrouter_client(session: AsyncSession) -> tuple[OpenRouterClient, str]:
     """Retrieve API key & preferred model from database or environment."""
-    admin_repo = SqlAdminRepository(session)
-    key_setting = await admin_repo.get_setting("openrouter_api_key", {})
-    api_key = key_setting.get("key") if isinstance(key_setting, dict) else None
+    api_key = None
+    model = "deepseek/deepseek-chat"
+    try:
+        admin_repo = SqlAdminRepository(session)
+        key_setting = await admin_repo.get_setting("openrouter_api_key", {})
+        api_key = key_setting.get("key") if isinstance(key_setting, dict) else None
+    except Exception as ke:
+        log.warning("Could not load openrouter_api_key from DB: %s", ke)
+        try:
+            await session.rollback()
+        except Exception:
+            pass
+
     if not api_key:
         api_key = os.getenv("OPENROUTER_API_KEY", "")
 
-    model_setting = await admin_repo.get_setting("openrouter_default_model", {})
-    model = model_setting.get("model") if isinstance(model_setting, dict) else None
-    if not model:
-        model = "deepseek/deepseek-chat"
+    try:
+        admin_repo = SqlAdminRepository(session)
+        model_setting = await admin_repo.get_setting("openrouter_default_model", {})
+        db_model = model_setting.get("model") if isinstance(model_setting, dict) else None
+        if db_model:
+            model = db_model
+    except Exception as me:
+        log.warning("Could not load openrouter_default_model from DB: %s", me)
+        try:
+            await session.rollback()
+        except Exception:
+            pass
 
     return OpenRouterClient(api_key=api_key), model
 
@@ -76,6 +94,10 @@ async def run_evening_pipeline(triggered_by: str = "scheduler") -> dict[str, Any
                     log_id = await admin_repo.create_log("daily_evening_ai_master", triggered_by)
                 except Exception as le:
                     log.warning("Could not create execution log: %s", le)
+                    try:
+                        await session.rollback()
+                    except Exception:
+                        pass
 
                 # 2. Extract zero-token quant candidates and compact macro vector
                 candidates = await fetch_screener_candidates(session, limit=16)
@@ -85,9 +107,17 @@ async def run_evening_pipeline(triggered_by: str = "scheduler") -> dict[str, Any
                 client, default_model = await get_configured_openrouter_client(session)
 
                 # Fetch agent configs from DB
-                macro_cfg = await admin_repo.get_agent_config("market_dynamic_macro")
-                trade_cfg = await admin_repo.get_agent_config("ai_trade")
-                watch_cfg = await admin_repo.get_agent_config("ai_watchlist")
+                try:
+                    macro_cfg = await admin_repo.get_agent_config("market_dynamic_macro")
+                    trade_cfg = await admin_repo.get_agent_config("ai_trade")
+                    watch_cfg = await admin_repo.get_agent_config("ai_watchlist")
+                except Exception as ce:
+                    log.warning("Could not fetch agent configs from DB: %s", ce)
+                    try:
+                        await session.rollback()
+                    except Exception:
+                        pass
+                    macro_cfg, trade_cfg, watch_cfg = None, None, None
 
                 # ==============================================================
                 # 3. AGENT 1: AI Market Dynamic & Macro Read
@@ -136,20 +166,27 @@ async def run_evening_pipeline(triggered_by: str = "scheduler") -> dict[str, Any
                 market_payload["source"] = "openrouter" if macro_res.success else "heuristic"
 
                 # Persist market evaluation
-                await ai_repo.upsert_evaluation(
-                    feature="market",
-                    entity_key="GLOBAL",
-                    payload=market_payload,
-                    source=market_payload["source"],
-                    generated_at=now_utc,
-                )
-                await ai_repo.upsert_evaluation(
-                    feature="macro_read",
-                    entity_key="DAILY_SUMMARY",
-                    payload=market_payload,
-                    source=market_payload["source"],
-                    generated_at=now_utc,
-                )
+                try:
+                    await ai_repo.upsert_evaluation(
+                        feature="market",
+                        entity_key="GLOBAL",
+                        payload=market_payload,
+                        source=market_payload["source"],
+                        generated_at=now_utc,
+                    )
+                    await ai_repo.upsert_evaluation(
+                        feature="macro_read",
+                        entity_key="DAILY_SUMMARY",
+                        payload=market_payload,
+                        source=market_payload["source"],
+                        generated_at=now_utc,
+                    )
+                except Exception as me:
+                    log.warning("Could not persist market evaluation: %s", me)
+                    try:
+                        await session.rollback()
+                    except Exception:
+                        pass
 
                 # ==============================================================
                 # 4. AGENT 2: AI Trade Agent (Setups, Entry, SL, Target)
@@ -205,13 +242,20 @@ async def run_evening_pipeline(triggered_by: str = "scheduler") -> dict[str, Any
                 trade_payload["evaluated_at"] = now_utc.isoformat()
                 trade_payload["source"] = "openrouter" if trade_res.success else "heuristic"
 
-                await ai_repo.upsert_evaluation(
-                    feature="ai_trade",
-                    entity_key="LATEST",
-                    payload=trade_payload,
-                    source=trade_payload["source"],
-                    generated_at=now_utc,
-                )
+                try:
+                    await ai_repo.upsert_evaluation(
+                        feature="ai_trade",
+                        entity_key="LATEST",
+                        payload=trade_payload,
+                        source=trade_payload["source"],
+                        generated_at=now_utc,
+                    )
+                except Exception as te:
+                    log.warning("Could not persist trade evaluation: %s", te)
+                    try:
+                        await session.rollback()
+                    except Exception:
+                        pass
 
                 # ==============================================================
                 # 5. AGENT 3: AI Watchlist Agent (Categorized Picks)
@@ -253,13 +297,20 @@ async def run_evening_pipeline(triggered_by: str = "scheduler") -> dict[str, Any
                 watch_payload["evaluated_at"] = now_utc.isoformat()
                 watch_payload["source"] = "openrouter" if watch_res.success else "heuristic"
 
-                await ai_repo.upsert_evaluation(
-                    feature="agent_scan",
-                    entity_key="LATEST",
-                    payload=watch_payload,
-                    source=watch_payload["source"],
-                    generated_at=now_utc,
-                )
+                try:
+                    await ai_repo.upsert_evaluation(
+                        feature="agent_scan",
+                        entity_key="LATEST",
+                        payload=watch_payload,
+                        source=watch_payload["source"],
+                        generated_at=now_utc,
+                    )
+                except Exception as we:
+                    log.warning("Could not persist watchlist evaluation: %s", we)
+                    try:
+                        await session.rollback()
+                    except Exception:
+                        pass
 
                 # ==============================================================
                 # 6. Warm Redis hot cache for instant <50ms read by regular users
@@ -289,24 +340,31 @@ async def run_evening_pipeline(triggered_by: str = "scheduler") -> dict[str, Any
                     "published_at": now_utc.isoformat(),
                 }
 
-                await admin_repo.update_scheduled_job(
-                    "daily_evening_ai_master",
-                    {
-                        "last_run_at": now_utc,
-                        "last_status": "SUCCESS",
-                        "last_duration_sec": duration,
-                    },
-                )
+                try:
+                    await admin_repo.update_scheduled_job(
+                        "daily_evening_ai_master",
+                        {
+                            "last_run_at": now_utc,
+                            "last_status": "SUCCESS",
+                            "last_duration_sec": duration,
+                        },
+                    )
+                except Exception as je:
+                    log.warning("Could not update scheduled job: %s", je)
 
-                await admin_repo.finish_log(
-                    log_id=log_id,
-                    status="SUCCESS",
-                    duration_sec=duration,
-                    summary=summary,
-                    prompt_tokens=total_prompt_tokens,
-                    completion_tokens=total_completion_tokens,
-                    cost_usd=round(total_cost_usd, 6),
-                )
+                if log_id:
+                    try:
+                        await admin_repo.finish_log(
+                            log_id=log_id,
+                            status="SUCCESS",
+                            duration_sec=duration,
+                            summary=summary,
+                            prompt_tokens=total_prompt_tokens,
+                            completion_tokens=total_completion_tokens,
+                            cost_usd=round(total_cost_usd, 6),
+                        )
+                    except Exception as fe:
+                        log.warning("Could not finish log: %s", fe)
 
                 log.info(
                     "Evening master AI pipeline completed in %.2fs. Tokens: %d, Cost: $%.6f",

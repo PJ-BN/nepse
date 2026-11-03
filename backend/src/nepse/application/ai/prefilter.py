@@ -29,7 +29,7 @@ async def fetch_screener_candidates(session: AsyncSession, limit: int = 20) -> l
             SELECT 
                 s.symbol,
                 c.name,
-                c.sector,
+                s.sector,
                 s.close,
                 s.change_pct,
                 s.volume,
@@ -52,9 +52,19 @@ async def fetch_screener_candidates(session: AsyncSession, limit: int = 20) -> l
         """)
         rows = (await session.execute(sql)).mappings().all()
     except Exception:
-        # Fallback if mv_screener_snapshot is unpopulated or not yet refreshed
         try:
-            fallback_sql = text("SELECT symbol, name, sector FROM companies WHERE status = 'ACTIVE' LIMIT 20")
+            await session.rollback()
+        except Exception:
+            pass
+        # Fallback if mv_screener_snapshot is unpopulated, missing, or column mismatch
+        try:
+            fallback_sql = text("""
+                SELECT c.symbol, c.name, COALESCE(sec.code, 'Commercial Banks') AS sector 
+                FROM companies c 
+                LEFT JOIN sectors sec ON sec.id = c.sector_id 
+                WHERE c.status = 'ACTIVE' 
+                LIMIT 20
+            """)
             fallback_rows = (await session.execute(fallback_sql)).mappings().all()
             return [
                 {
@@ -71,6 +81,10 @@ async def fetch_screener_candidates(session: AsyncSession, limit: int = 20) -> l
                 for r in fallback_rows
             ]
         except Exception:
+            try:
+                await session.rollback()
+            except Exception:
+                pass
             return []
 
     if not rows:
@@ -175,4 +189,8 @@ async def build_compact_macro_vector(session: AsyncSession) -> str:
 
         return f"MKT:{idx_val}|TO:{to_cr}Cr|ADV:{adv}|DEC:{dec}|REPO:5.5%|INFL:4.1%|SEBON_PIPE:{sebon_cnt}"
     except Exception:
+        try:
+            await session.rollback()
+        except Exception:
+            pass
         return "MKT:NEPSE(Neutral)|TO:5.0Cr|ADV:130|DEC:80|REPO:5.5%|INFL:4.1%|SEBON_PIPE:4"
