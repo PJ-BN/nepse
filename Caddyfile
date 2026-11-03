@@ -1,0 +1,12 @@
+{
+    # Global options
+}
+
+{$DOMAIN:localhost} {
+    # Reverse proxy API and health check to FastAPI backend
+    reverse_proxy /api/* api:8000
+    reverse_proxy /healthz api:8000
+
+    # Reverse proxy all other requests to Next.js Web UI
+    reverse_proxy * web:3000
+}

@@ -57,5 +57,23 @@ services:
     ports: ["3000:3000"]
     depends_on: [api]
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+
 volumes:
   db-data:
+  caddy_data:
+  caddy_config:
