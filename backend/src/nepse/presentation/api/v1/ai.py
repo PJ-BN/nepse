@@ -5,12 +5,112 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from nepse.application.auth.ports import User
+from nepse.domain.calendar.npt import now_npt
+from nepse.infrastructure.cache.redis_client import redis
 from nepse.infrastructure.db.repositories.ai import SqlAiRepository
+from nepse.presentation.api.v1.auth import get_current_user
 from nepse.presentation.api.v1.screener import get_session
 
 router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
 
 NEXTJS_HOST_URL = os.getenv("NEXTJS_INTERNAL_URL", "http://host.docker.internal:3000")
+DAILY_PROMPT_LIMIT = 5
+PROMPT_KEY_TTL = 172800  # 48 hours
+
+_in_memory_prompt_limits: dict[str, int] = {}
+
+
+async def _get_prompt_usage(user_id: int, date_str: str) -> int:
+    key = f"nepse:ai:prompt_limit:{user_id}:{date_str}"
+    try:
+        raw = await redis.get(key)
+        if raw is not None:
+            return int(raw)
+    except Exception:
+        pass
+    return _in_memory_prompt_limits.get(key, 0)
+
+
+async def _increment_prompt_usage(user_id: int, date_str: str) -> int:
+    key = f"nepse:ai:prompt_limit:{user_id}:{date_str}"
+    try:
+        val = await redis.incr(key)
+        if val == 1:
+            await redis.expire(key, PROMPT_KEY_TTL)
+        _in_memory_prompt_limits[key] = val
+        return val
+    except Exception:
+        val = _in_memory_prompt_limits.get(key, 0) + 1
+        _in_memory_prompt_limits[key] = val
+        return val
+
+
+@router.get("/prompt-limit")
+async def get_prompt_limit(
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Check the authenticated user's daily AI prompt limit and usage."""
+    today_str = now_npt().date().isoformat()
+    is_admin = (user.role == "admin")
+    used = await _get_prompt_usage(user.id, today_str)
+
+    if is_admin:
+        return {
+            "is_admin": True,
+            "limit": None,
+            "used": used,
+            "remaining": None,
+            "reset_date": today_str,
+        }
+
+    remaining = max(0, DAILY_PROMPT_LIMIT - used)
+    return {
+        "is_admin": False,
+        "limit": DAILY_PROMPT_LIMIT,
+        "used": used,
+        "remaining": remaining,
+        "reset_date": today_str,
+    }
+
+
+@router.post("/prompt-limit/consume")
+async def consume_prompt_limit(
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Consume 1 prompt token for the day. Raises 429 for non-admin users if quota is exceeded."""
+    today_str = now_npt().date().isoformat()
+    is_admin = (user.role == "admin")
+
+    if not is_admin:
+        current_used = await _get_prompt_usage(user.id, today_str)
+        if current_used >= DAILY_PROMPT_LIMIT:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Daily prompt limit reached ({DAILY_PROMPT_LIMIT} prompts/day). Admin accounts have unlimited access.",
+            )
+
+    new_used = await _increment_prompt_usage(user.id, today_str)
+
+    if is_admin:
+        return {
+            "allowed": True,
+            "is_admin": True,
+            "limit": None,
+            "used": new_used,
+            "remaining": None,
+            "reset_date": today_str,
+        }
+
+    remaining = max(0, DAILY_PROMPT_LIMIT - new_used)
+    return {
+        "allowed": True,
+        "is_admin": False,
+        "limit": DAILY_PROMPT_LIMIT,
+        "used": new_used,
+        "remaining": remaining,
+        "reset_date": today_str,
+    }
 
 
 class AiEvaluationSaveRequest(BaseModel):

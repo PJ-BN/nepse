@@ -8,6 +8,55 @@ export async function POST(req: NextRequest) {
     return unauthorizedAiResponse();
   }
 
+  // Check and consume prompt quota via backend FastAPI
+  const authHeader = req.headers.get("authorization");
+  const API_BASE = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  let usageData: {
+    allowed?: boolean;
+    is_admin?: boolean;
+    limit?: number | null;
+    used?: number;
+    remaining?: number | null;
+    reset_date?: string;
+  } | null = null;
+
+  if (authHeader) {
+    try {
+      const limitRes = await fetch(`${API_BASE}/api/v1/ai/prompt-limit/consume`, {
+        method: "POST",
+        headers: {
+          Authorization: authHeader,
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (limitRes.status === 429) {
+        const errPayload = await limitRes.json().catch(() => ({}));
+        return NextResponse.json(
+          {
+            error: "Daily prompt limit reached",
+            message:
+              errPayload.detail ||
+              "You have reached your daily limit of 5 prompts. Limits reset every day at midnight (NPT). Admin accounts enjoy unlimited access.",
+            limit_reached: true,
+            prompts_remaining: 0,
+            limit: 5,
+          },
+          { status: 429 }
+        );
+      }
+
+      if (limitRes.ok) {
+        usageData = await limitRes.json().catch(() => null);
+      }
+    } catch (err) {
+      console.warn("Failed to verify prompt quota with backend:", err);
+      // Non-blocking: allow chat if quota service is temporarily unreachable
+    }
+  }
+
   try {
     const body = await req.json().catch(() => ({}));
     const query = String(body.query || "").trim();
@@ -40,6 +89,7 @@ export async function POST(req: NextRequest) {
       answer: narrative,
       recommendedStocks: heuristic.recommendedStocks,
       timestamp: new Date().toISOString(),
+      usage: usageData,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal server error";

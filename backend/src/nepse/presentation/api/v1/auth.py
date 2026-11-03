@@ -52,7 +52,7 @@ def current_user_id(
         raise HTTPException(401, "invalid or expired token", headers={"WWW-Authenticate": "Bearer"}) from None
 
 
-async def require_admin(
+async def get_current_user(
     user_id: int = Depends(current_user_id),
     session: AsyncSession = Depends(get_session),
 ) -> User:
@@ -62,6 +62,12 @@ async def require_admin(
         raise HTTPException(404, "user not found")
     if not user.is_active:
         raise HTTPException(403, "account is deactivated")
+    return user
+
+
+async def require_admin(
+    user: User = Depends(get_current_user),
+) -> User:
     if user.role != "admin":
         raise HTTPException(403, "administrative privileges required")
     return user

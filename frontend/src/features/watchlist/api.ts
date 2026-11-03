@@ -22,11 +22,31 @@ export async function fetchAgentScan(forceRefresh = false): Promise<AgentScanRes
   return getJson<AgentScanResult>(url);
 }
 
+export interface PromptLimitInfo {
+  allowed?: boolean;
+  is_admin: boolean;
+  limit: number | null;
+  used: number;
+  remaining: number | null;
+  reset_date: string;
+}
+
+export async function fetchPromptLimit(): Promise<PromptLimitInfo> {
+  return getJson<PromptLimitInfo>("/api/v1/ai/prompt-limit");
+}
+
+export interface AgentChatResponse {
+  answer: string;
+  recommendedStocks: StockAgentEvaluation[];
+  timestamp: string;
+  usage?: PromptLimitInfo;
+}
+
 export async function sendAgentMessage(
   query: string,
   watchlistSymbols: string[] = []
-): Promise<{ answer: string; recommendedStocks: StockAgentEvaluation[]; timestamp: string }> {
-  return postJson<{ answer: string; recommendedStocks: StockAgentEvaluation[]; timestamp: string }>(
+): Promise<AgentChatResponse> {
+  return postJson<AgentChatResponse>(
     "/api/ai/agent/chat",
     { query, watchlistSymbols }
   );
