@@ -157,8 +157,13 @@ export async function runJobManually(jobId: string): Promise<Record<string, unkn
   if (!res.ok) {
     let errMsg = "";
     try {
-      const err = await res.json();
-      errMsg = err.detail || err.message || err.error || (typeof err === "string" ? err : JSON.stringify(err));
+      const text = await res.text();
+      try {
+        const err = JSON.parse(text);
+        errMsg = err.detail || err.message || err.error || (typeof err === "string" ? err : JSON.stringify(err));
+      } catch {
+        errMsg = text && text.length < 300 ? text : `HTTP ${res.status}: ${res.statusText || "Request failed"}`;
+      }
     } catch {
       errMsg = `HTTP ${res.status}: ${res.statusText || "Request failed"}`;
     }

@@ -91,11 +91,12 @@ export function UserMenu({ direction = "down" }: UserMenuProps) {
 
       {dropdownOpen && (
         <div
-          className={`absolute z-50 rounded-2xl border border-border/80 bg-card p-2 shadow-2xl animate-in fade-in duration-150 ${
+          className={`absolute z-50 rounded-2xl border border-border bg-surface p-2 shadow-2xl animate-in fade-in duration-150 ${
             direction === "up"
               ? "bottom-full mb-2 left-0 right-0 sm:right-auto sm:w-60 slide-in-from-bottom-2"
               : "top-full mt-2 right-0 w-56 zoom-in-95"
           }`}
+          style={{ backgroundColor: "var(--surface)" }}
         >
           <div className="border-b border-border/50 px-3 py-2">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Logged In As</p>

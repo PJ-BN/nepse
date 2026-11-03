@@ -429,10 +429,19 @@ async def run_scheduled_job_manually(
     if job_id == "daily_evening_ai_master":
         try:
             result = await run_evening_pipeline(triggered_by=f"admin:{admin.email}")
-            return {"status": "success", "job_id": job_id, "result": result}
+            is_success = result.get("status") == "SUCCESS"
+            return {
+                "status": "success" if is_success else "error",
+                "job_id": job_id,
+                "result": result,
+            }
         except Exception as e:
             log.exception("Manual evening AI pipeline run failed: %s", e)
-            raise HTTPException(status_code=500, detail=f"Evening AI pipeline failed: {str(e)}")
+            return {
+                "status": "error",
+                "job_id": job_id,
+                "result": {"status": "FAILED", "error": str(e)},
+            }
 
     raise HTTPException(400, f"Manual trigger for job '{job_id}' via this endpoint is not supported yet.")
 

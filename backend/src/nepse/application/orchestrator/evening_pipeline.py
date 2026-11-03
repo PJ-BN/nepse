@@ -65,13 +65,18 @@ async def run_evening_pipeline(triggered_by: str = "scheduler") -> dict[str, Any
             admin_repo = SqlAdminRepository(session)
             ai_repo = SqlAiRepository(session)
 
-            # 1. Create log record
-            log_id = await admin_repo.create_log("daily_evening_ai_master", triggered_by)
+            log_id: int | None = None
             total_prompt_tokens = 0
             total_completion_tokens = 0
             total_cost_usd = 0.0
 
             try:
+                # 1. Create log record (safe)
+                try:
+                    log_id = await admin_repo.create_log("daily_evening_ai_master", triggered_by)
+                except Exception as le:
+                    log.warning("Could not create execution log: %s", le)
+
                 # 2. Extract zero-token quant candidates and compact macro vector
                 candidates = await fetch_screener_candidates(session, limit=16)
                 macro_vector = await build_compact_macro_vector(session)
@@ -185,11 +190,11 @@ async def run_evening_pipeline(triggered_by: str = "scheduler") -> dict[str, Any
                             "urgency": "ON_CONFIRMATION",
                             "headlineReason": f"Institutional broker accumulation ({c.get('top3_broker_accum_15d_pct', 60)}%) and positive momentum.",
                             "tradePlan": {
-                                "entryMin": round(float(c.get("close", 500)) * 0.98, 1),
-                                "entryMax": float(c.get("close", 500)),
-                                "stopLoss": round(float(c.get("close", 500)) * 0.94, 1),
-                                "target1": round(float(c.get("close", 500)) * 1.08, 1),
-                                "target2": round(float(c.get("close", 500)) * 1.15, 1),
+                                "entryMin": round(float(c.get("close") or 500) * 0.98, 1),
+                                "entryMax": float(c.get("close") or 500),
+                                "stopLoss": round(float(c.get("close") or 500) * 0.94, 1),
+                                "target1": round(float(c.get("close") or 500) * 1.08, 1),
+                                "target2": round(float(c.get("close") or 500) * 1.15, 1),
                                 "riskReward": "1:2.5",
                                 "timeframe": "Swing (1-3 weeks)",
                             },
@@ -314,18 +319,33 @@ async def run_evening_pipeline(triggered_by: str = "scheduler") -> dict[str, Any
             except Exception as e:
                 duration = round(time.monotonic() - start_time, 2)
                 log.exception("Evening master AI pipeline failed: %s", e)
-                await admin_repo.finish_log(
-                    log_id=log_id,
-                    status="FAILED",
-                    duration_sec=duration,
-                    summary={"error": str(e)},
-                    prompt_tokens=total_prompt_tokens,
-                    completion_tokens=total_completion_tokens,
-                    cost_usd=round(total_cost_usd, 6),
-                    error_details=str(e),
-                )
-                await admin_repo.update_scheduled_job(
-                    "daily_evening_ai_master",
-                    {"last_run_at": now_utc, "last_status": "FAILED", "last_duration_sec": duration},
-                )
-                raise
+                try:
+                    await session.rollback()
+                except Exception:
+                    pass
+                if log_id:
+                    try:
+                        await admin_repo.finish_log(
+                            log_id=log_id,
+                            status="FAILED",
+                            duration_sec=duration,
+                            summary={"error": str(e)},
+                            prompt_tokens=total_prompt_tokens,
+                            completion_tokens=total_completion_tokens,
+                            cost_usd=round(total_cost_usd, 6),
+                            error_details=str(e),
+                        )
+                    except Exception as fe:
+                        log.warning("Could not finish log: %s", fe)
+                try:
+                    await admin_repo.update_scheduled_job(
+                        "daily_evening_ai_master",
+                        {"last_run_at": now_utc, "last_status": "FAILED", "last_duration_sec": duration},
+                    )
+                except Exception:
+                    pass
+                return {
+                    "status": "FAILED",
+                    "error": str(e),
+                    "duration_sec": duration,
+                }
