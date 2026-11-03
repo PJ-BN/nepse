@@ -38,13 +38,13 @@ export function AdminSchedulesTab() {
       setManualOutput(null);
       const res = await runJobManually(jobId);
       setManualOutput(res);
-      queryClient.invalidateQueries({ queryKey: ["admin-execution-logs"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-schedules"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
     } catch (err: unknown) {
       setManualOutput({ error: (err as Error).message });
     } finally {
       setRunningJobId(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-execution-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-schedules"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
     }
   };
 

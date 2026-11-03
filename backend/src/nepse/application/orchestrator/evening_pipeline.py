@@ -189,7 +189,7 @@ async def run_evening_pipeline(triggered_by: str = "scheduler") -> dict[str, Any
                         pass
 
                 # ==============================================================
-                # 4. AGENT 2: AI Trade Agent (Setups, Entry, SL, Target)
+                # 4. AGENTS 2 & 3: Run AI Trade Agent & Watchlist Agent in Parallel
                 # ==============================================================
                 regime_str = market_payload.get("market_status", "MODERATELY BULLISH")
                 trade_model = trade_cfg.model_slug if trade_cfg else default_model
@@ -204,19 +204,42 @@ async def run_evening_pipeline(triggered_by: str = "scheduler") -> dict[str, Any
                     else f"MKT REGIME: {regime_str}\nCANDIDATES:\n{candidates_csv}\nProvide high conviction trade setups in JSON: {{\"setups\": []}}"
                 )
 
-                trade_res = await client.complete(
-                    messages=[
-                        {"role": "system", "content": trade_sys},
-                        {"role": "user", "content": trade_prompt},
-                    ],
-                    model=trade_model,
-                    temperature=float(trade_cfg.temperature) if trade_cfg else 0.1,
-                    max_tokens=trade_cfg.max_tokens if trade_cfg else 2048,
+                watch_model = watch_cfg.model_slug if watch_cfg else default_model
+                watch_sys = (
+                    watch_cfg.system_prompt
+                    if watch_cfg
+                    else "You are the Institutional Portfolio Strategist for NEPSE equities. Classify into strategic baskets. Strict JSON."
+                )
+                watch_prompt = (
+                    watch_cfg.user_prompt_template.replace("{candidates_csv}", candidates_csv)
+                    if watch_cfg
+                    else f"CANDIDATES:\n{candidates_csv}\nReturn top classified picks in JSON."
                 )
 
-                total_prompt_tokens += trade_res.prompt_tokens
-                total_completion_tokens += trade_res.completion_tokens
-                total_cost_usd += trade_res.cost_usd
+                trade_res, watch_res = await asyncio.gather(
+                    client.complete(
+                        messages=[
+                            {"role": "system", "content": trade_sys},
+                            {"role": "user", "content": trade_prompt},
+                        ],
+                        model=trade_model,
+                        temperature=float(trade_cfg.temperature) if trade_cfg else 0.1,
+                        max_tokens=trade_cfg.max_tokens if trade_cfg else 2048,
+                    ),
+                    client.complete(
+                        messages=[
+                            {"role": "system", "content": watch_sys},
+                            {"role": "user", "content": watch_prompt},
+                        ],
+                        model=watch_model,
+                        temperature=float(watch_cfg.temperature) if watch_cfg else 0.1,
+                        max_tokens=watch_cfg.max_tokens if watch_cfg else 1800,
+                    ),
+                )
+
+                total_prompt_tokens += trade_res.prompt_tokens + watch_res.prompt_tokens
+                total_completion_tokens += trade_res.completion_tokens + watch_res.completion_tokens
+                total_cost_usd += trade_res.cost_usd + watch_res.cost_usd
 
                 trade_payload = trade_res.parsed_json or {
                     "setups": [
@@ -256,35 +279,6 @@ async def run_evening_pipeline(triggered_by: str = "scheduler") -> dict[str, Any
                         await session.rollback()
                     except Exception:
                         pass
-
-                # ==============================================================
-                # 5. AGENT 3: AI Watchlist Agent (Categorized Picks)
-                # ==============================================================
-                watch_model = watch_cfg.model_slug if watch_cfg else default_model
-                watch_sys = (
-                    watch_cfg.system_prompt
-                    if watch_cfg
-                    else "You are the Institutional Portfolio Strategist for NEPSE equities. Classify into strategic baskets. Strict JSON."
-                )
-                watch_prompt = (
-                    watch_cfg.user_prompt_template.replace("{candidates_csv}", candidates_csv)
-                    if watch_cfg
-                    else f"CANDIDATES:\n{candidates_csv}\nReturn top classified picks in JSON."
-                )
-
-                watch_res = await client.complete(
-                    messages=[
-                        {"role": "system", "content": watch_sys},
-                        {"role": "user", "content": watch_prompt},
-                    ],
-                    model=watch_model,
-                    temperature=float(watch_cfg.temperature) if watch_cfg else 0.1,
-                    max_tokens=watch_cfg.max_tokens if watch_cfg else 1800,
-                )
-
-                total_prompt_tokens += watch_res.prompt_tokens
-                total_completion_tokens += watch_res.completion_tokens
-                total_cost_usd += watch_res.cost_usd
 
                 watch_payload = watch_res.parsed_json or {
                     "topBuys": [c.get("symbol") for c in candidates[:4]],
