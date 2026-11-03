@@ -6,7 +6,9 @@ Manages:
   3. Dynamic Scheduling & Manual Sync Execution
   4. AI Agents, Prompts & OpenRouter API / Token Budget
 """
+import logging
 import time
+from datetime import datetime, timezone
 from typing import Any
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -15,13 +17,29 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from nepse.application.auth.ports import User
+from nepse.application.ingestion.eod import run_eod
+from nepse.application.macro.use_cases import ingest_sebon
+from nepse.application.news.use_cases import ingest_news
 from nepse.application.orchestrator.evening_pipeline import run_evening_pipeline
 from nepse.domain.calendar.npt import now_npt
+from nepse.infrastructure.cache.redis_client import redis
+from nepse.infrastructure.db.engine import engine
 from nepse.infrastructure.db.models_admin import SqlAdminRepository
 from nepse.infrastructure.db.models_portfolio import SqlUserRepo
+from nepse.infrastructure.db.repositories.ingestion import SqlIngestionRepository
+from nepse.infrastructure.db.repositories.macro import SqlMacroRepository
+from nepse.infrastructure.db.repositories.news import SqlNewsRepository
+from nepse.infrastructure.db.repositories.screener import SqlScreenerRepository
 from nepse.infrastructure.db.session import SessionLocal
+from nepse.infrastructure.upstream.http import new_http_client
+from nepse.infrastructure.upstream.nepse.client import NepseClient
+from nepse.infrastructure.upstream.nepse.token_solver import TokenSolver
+from nepse.infrastructure.upstream.news.aggregator import MultiSourceNewsAggregator
 from nepse.infrastructure.upstream.openrouter import OpenRouterClient
+from nepse.infrastructure.upstream.sebon.client import SebonClient
 from nepse.presentation.api.v1.auth import get_session, require_admin
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -426,6 +444,12 @@ async def run_scheduled_job_manually(
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, Any]:
     """Trigger a manual on-demand execution of any job right now."""
+    admin_repo = SqlAdminRepository(session)
+    job_row = await admin_repo.get_scheduled_job(job_id)
+    if not job_row:
+        raise HTTPException(404, f"Job '{job_id}' not found in scheduled_jobs.")
+
+    # 1. Daily 4:00 PM Master AI & Market Wrap Pipeline
     if job_id == "daily_evening_ai_master":
         try:
             result = await run_evening_pipeline(triggered_by=f"admin:{admin.email}")
@@ -443,7 +467,197 @@ async def run_scheduled_job_manually(
                 "result": {"status": "FAILED", "error": str(e)},
             }
 
-    raise HTTPException(400, f"Manual trigger for job '{job_id}' via this endpoint is not supported yet.")
+    # 2. NEPSE EOD Market Data Ingestion
+    if job_id == "eod_market_sync":
+        start_time = time.perf_counter()
+        log_id = await admin_repo.create_log(job_id, f"admin:{admin.email}")
+        try:
+            async with new_http_client() as http:
+                source = NepseClient(http, redis, TokenSolver())
+                repo = SqlIngestionRepository(engine)
+                report = await run_eod(source, repo)
+
+            async with SessionLocal() as s_session:
+                await SqlScreenerRepository(s_session).refresh()
+
+            duration_sec = round(time.perf_counter() - start_time, 2)
+            now_utc = datetime.now(timezone.utc)
+            summary = {
+                "business_date": report.business_date,
+                "companies": report.companies,
+                "daily_bars": report.daily_bars,
+                "index_bars": report.index_bars,
+                "floorsheet_ticks": report.floorsheet_ticks,
+            }
+            await admin_repo.finish_log(
+                log_id=log_id,
+                status="SUCCESS",
+                duration_sec=duration_sec,
+                summary=summary,
+            )
+            await admin_repo.update_scheduled_job(
+                job_id,
+                {
+                    "last_run_at": now_utc,
+                    "last_status": "SUCCESS",
+                    "last_duration_sec": duration_sec,
+                },
+            )
+            return {
+                "status": "success",
+                "job_id": job_id,
+                "result": {
+                    "status": "SUCCESS",
+                    "duration_sec": duration_sec,
+                    **summary,
+                },
+            }
+        except Exception as e:
+            duration_sec = round(time.perf_counter() - start_time, 2)
+            now_utc = datetime.now(timezone.utc)
+            log.exception("Manual eod_market_sync failed: %s", e)
+            await admin_repo.finish_log(
+                log_id=log_id,
+                status="FAILED",
+                duration_sec=duration_sec,
+                summary={},
+                error_details=str(e),
+            )
+            await admin_repo.update_scheduled_job(
+                job_id,
+                {
+                    "last_run_at": now_utc,
+                    "last_status": "FAILED",
+                    "last_duration_sec": duration_sec,
+                },
+            )
+            return {
+                "status": "error",
+                "job_id": job_id,
+                "result": {"status": "FAILED", "duration_sec": duration_sec, "error": str(e)},
+            }
+
+    # 3. Financial News & Macro Pulse Sync
+    if job_id == "news_macro_sync":
+        start_time = time.perf_counter()
+        log_id = await admin_repo.create_log(job_id, f"admin:{admin.email}")
+        try:
+            async with SessionLocal() as s_session:
+                repo = SqlNewsRepository(s_session)
+                count = await ingest_news(MultiSourceNewsAggregator(), repo)
+
+            duration_sec = round(time.perf_counter() - start_time, 2)
+            now_utc = datetime.now(timezone.utc)
+            summary = {"articles_ingested": count}
+            await admin_repo.finish_log(
+                log_id=log_id,
+                status="SUCCESS",
+                duration_sec=duration_sec,
+                summary=summary,
+            )
+            await admin_repo.update_scheduled_job(
+                job_id,
+                {
+                    "last_run_at": now_utc,
+                    "last_status": "SUCCESS",
+                    "last_duration_sec": duration_sec,
+                },
+            )
+            return {
+                "status": "success",
+                "job_id": job_id,
+                "result": {
+                    "status": "SUCCESS",
+                    "duration_sec": duration_sec,
+                    "articles_ingested": count,
+                },
+            }
+        except Exception as e:
+            duration_sec = round(time.perf_counter() - start_time, 2)
+            now_utc = datetime.now(timezone.utc)
+            log.exception("Manual news_macro_sync failed: %s", e)
+            await admin_repo.finish_log(
+                log_id=log_id,
+                status="FAILED",
+                duration_sec=duration_sec,
+                summary={},
+                error_details=str(e),
+            )
+            await admin_repo.update_scheduled_job(
+                job_id,
+                {
+                    "last_run_at": now_utc,
+                    "last_status": "FAILED",
+                    "last_duration_sec": duration_sec,
+                },
+            )
+            return {
+                "status": "error",
+                "job_id": job_id,
+                "result": {"status": "FAILED", "duration_sec": duration_sec, "error": str(e)},
+            }
+
+    # 4. SEBON Regulatory Filings Sync
+    if job_id == "sebon_pipeline_sync":
+        start_time = time.perf_counter()
+        log_id = await admin_repo.create_log(job_id, f"admin:{admin.email}")
+        try:
+            async with SessionLocal() as s_session:
+                repo = SqlMacroRepository(s_session)
+                count = await ingest_sebon(SebonClient(), repo)
+
+            duration_sec = round(time.perf_counter() - start_time, 2)
+            now_utc = datetime.now(timezone.utc)
+            summary = {"records_ingested": count}
+            await admin_repo.finish_log(
+                log_id=log_id,
+                status="SUCCESS",
+                duration_sec=duration_sec,
+                summary=summary,
+            )
+            await admin_repo.update_scheduled_job(
+                job_id,
+                {
+                    "last_run_at": now_utc,
+                    "last_status": "SUCCESS",
+                    "last_duration_sec": duration_sec,
+                },
+            )
+            return {
+                "status": "success",
+                "job_id": job_id,
+                "result": {
+                    "status": "SUCCESS",
+                    "duration_sec": duration_sec,
+                    "records_ingested": count,
+                },
+            }
+        except Exception as e:
+            duration_sec = round(time.perf_counter() - start_time, 2)
+            now_utc = datetime.now(timezone.utc)
+            log.exception("Manual sebon_pipeline_sync failed: %s", e)
+            await admin_repo.finish_log(
+                log_id=log_id,
+                status="FAILED",
+                duration_sec=duration_sec,
+                summary={},
+                error_details=str(e),
+            )
+            await admin_repo.update_scheduled_job(
+                job_id,
+                {
+                    "last_run_at": now_utc,
+                    "last_status": "FAILED",
+                    "last_duration_sec": duration_sec,
+                },
+            )
+            return {
+                "status": "error",
+                "job_id": job_id,
+                "result": {"status": "FAILED", "duration_sec": duration_sec, "error": str(e)},
+            }
+
+    raise HTTPException(400, f"Manual trigger for job '{job_id}' is not supported.")
 
 
 @router.get("/schedules/logs")
