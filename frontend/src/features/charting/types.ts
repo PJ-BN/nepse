@@ -57,8 +57,4 @@ export type IndicatorType =
 
 export type Indicator = { id: string; type: IndicatorType; period: number; color: string };
 
-export const DEFAULT_INDICATORS: Indicator[] = [
-  { id: "sma20", type: "sma", period: 20, color: "#f59e0b" },
-  { id: "sma50", type: "sma", period: 50, color: "#3b82f6" },
-  { id: "rsi14", type: "rsi", period: 14, color: "#a855f7" },
-];
+export const DEFAULT_INDICATORS: Indicator[] = [];

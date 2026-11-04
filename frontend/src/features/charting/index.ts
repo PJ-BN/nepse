@@ -2,6 +2,7 @@ export { ChartView } from "./components/ChartView";
 export { ChartGrid } from "./components/ChartGrid";
 export { NepseTradingChart } from "./components/NepseTradingChart";
 export { AiChartArticle } from "./components/AiChartArticle";
+export { AiChartSidebar } from "./components/AiChartSidebar";
 export { useChartAi } from "./hooks/useChartAi";
 export { fetchHistory, searchSymbols } from "./api";
 export { useHistory } from "./hooks/useHistory";

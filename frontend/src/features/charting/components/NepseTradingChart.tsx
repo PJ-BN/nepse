@@ -96,6 +96,8 @@ export function NepseTradingChart({
   timeframe,
   onChart,
   extraIndicators = NO_INDICATORS,
+  headerLeading,
+  headerTrailing,
 }: {
   candles: Candle[];
   overlay?: PriceOverlay[];
@@ -108,6 +110,10 @@ export function NepseTradingChart({
   onChart?: (chart: Chart | null) => void;
   /** Extra main-pane indicators (e.g. a compare overlay) that survive the indicator rebuild. */
   extraIndicators?: IndicatorCreate[];
+  /** Leading items for unified top toolbar */
+  headerLeading?: React.ReactNode;
+  /** Trailing items for unified top toolbar */
+  headerTrailing?: React.ReactNode;
 }) {
   const el = useRef<HTMLDivElement>(null);
   const chart = useRef<Chart | null>(null);
@@ -337,11 +343,10 @@ export function NepseTradingChart({
   const sel = selected ? chart.current?.getOverlays({ id: selected })[0] : undefined;
   const removeIndicator = (name: string) =>
     update(base.includes(name) ? { removed: [...removed, name] } : { extras: extras.filter((x) => x !== name) });
-  const btn = "rounded border px-2 py-1 hover:bg-foreground/10";
 
   return (
     <div
-      className="flex h-full flex-col gap-2 outline-none"
+      className="flex h-full w-full flex-col min-h-0 overflow-hidden outline-none bg-background select-none"
       tabIndex={0}
       onKeyDown={(e) => {
         if ((e.target as HTMLElement).closest("input, select, textarea")) return;
@@ -357,94 +362,153 @@ export function NepseTradingChart({
         }
       }}
     >
-      <div className="flex flex-wrap items-start gap-2 text-xs">
-        <IndicatorMenu
-          active={activeNames}
-          onToggle={(name) => {
-            if (removed.includes(name)) update({ removed: removed.filter((x) => x !== name) });
-            else if (activeNames.has(name)) removeIndicator(name);
-            else update({ extras: [...extras, name] });
-          }}
-        />
-        <div className="relative">
-          <button type="button" aria-expanded={panel === "indicators"} className={btn} onClick={() => setPanel(panel === "indicators" ? null : "indicators")}>
-            Indicator settings
-          </button>
-          {panel === "indicators" && chart.current && (
-            <div className="absolute left-0 top-full z-20 mt-1">
-              <IndicatorSettings
-                chart={chart.current}
-                params={settings.params}
-                onParams={(name, p: IndicatorParams) => update({ params: { ...settings.params, [name]: p } })}
-                onRemove={removeIndicator}
-              />
-            </div>
-          )}
+      {/* Unified Sleek Top Trading Header */}
+      <div className="shrink-0 flex items-center justify-between border-b border-border/80 bg-card/95 px-2.5 py-1.5 gap-2 text-xs overflow-x-auto [scrollbar-width:none]">
+        {/* Left section: Leading props (Symbol, Timeframe, etc.) + Chart Type + Scale */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {headerLeading}
+
+          <div className="h-4 w-px bg-border/70 mx-0.5" />
+
+          {/* Chart Type */}
+          <select
+            aria-label="Chart type"
+            value={type}
+            onChange={(e) => update({ type: e.target.value })}
+            className="rounded-lg border border-border bg-background px-2 py-1 text-xs font-medium cursor-pointer hover:bg-muted focus:outline-none"
+          >
+            {CHART_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Price Scale (Linear, %, Log) */}
+          <select
+            aria-label="Price scale"
+            value={axis}
+            onChange={(e) => update({ axis: e.target.value })}
+            className="rounded-lg border border-border bg-background px-2 py-1 text-xs font-medium cursor-pointer hover:bg-muted focus:outline-none"
+          >
+            {AXES.map((a) => (
+              <option key={a.value} value={a.value}>
+                {a.label}
+              </option>
+            ))}
+          </select>
         </div>
-        <div className="relative">
-          <button type="button" aria-expanded={panel === "layouts"} className={btn} onClick={() => setPanel(panel === "layouts" ? null : "layouts")}>
-            Layouts
+
+        {/* Center section: Indicators, Settings, Layouts, Screenshot */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <IndicatorMenu
+            active={activeNames}
+            onToggle={(name) => {
+              if (removed.includes(name)) update({ removed: removed.filter((x) => x !== name) });
+              else if (activeNames.has(name)) removeIndicator(name);
+              else update({ extras: [...extras, name] });
+            }}
+          />
+
+          <div className="relative">
+            <button
+              type="button"
+              aria-expanded={panel === "indicators"}
+              className="rounded-lg border border-border bg-background px-2 py-1 text-xs font-medium hover:bg-muted cursor-pointer transition-colors"
+              onClick={() => setPanel(panel === "indicators" ? null : "indicators")}
+            >
+              Settings
+            </button>
+            {panel === "indicators" && chart.current && (
+              <div className="absolute left-0 top-full z-40 mt-1">
+                <IndicatorSettings
+                  chart={chart.current}
+                  params={settings.params}
+                  onParams={(name, p: IndicatorParams) => update({ params: { ...settings.params, [name]: p } })}
+                  onRemove={removeIndicator}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button
+              type="button"
+              aria-expanded={panel === "layouts"}
+              className="rounded-lg border border-border bg-background px-2 py-1 text-xs font-medium hover:bg-muted cursor-pointer transition-colors"
+              onClick={() => setPanel(panel === "layouts" ? null : "layouts")}
+            >
+              Layouts
+            </button>
+            {panel === "layouts" && (
+              <div className="absolute left-0 top-full z-40 mt-1">
+                <LayoutMenu
+                  layouts={layouts}
+                  onSave={(name) => setLayouts(saveLayout(name, settings))}
+                  onLoad={(s) => update(s)}
+                  onDelete={(name) => setLayouts(deleteLayout(name))}
+                />
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            title="Download Screenshot (PNG)"
+            aria-label="Download Screenshot"
+            className="rounded-lg border border-border bg-background p-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors"
+            onClick={() => {
+              const url = chart.current?.getConvertPictureUrl(true, "png", dark() ? "#0b0b0f" : "#fff");
+              if (!url) return;
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `${symbol || "chart"}.png`;
+              a.click();
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
           </button>
-          {panel === "layouts" && (
-            <div className="absolute left-0 top-full z-20 mt-1">
-              <LayoutMenu
-                layouts={layouts}
-                onSave={(name) => setLayouts(saveLayout(name, settings))}
-                onLoad={(s) => update(s)}
-                onDelete={(name) => setLayouts(deleteLayout(name))}
-              />
-            </div>
-          )}
         </div>
-        <select aria-label="Chart type" value={type} onChange={(e) => update({ type: e.target.value })} className="rounded border bg-background px-2 py-1">
-          {CHART_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-        <select aria-label="Price scale" value={axis} onChange={(e) => update({ axis: e.target.value })} className="rounded border bg-background px-2 py-1">
-          {AXES.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
-        </select>
-        <button
-          type="button"
-          className={btn}
-          onClick={() => {
-            const url = chart.current?.getConvertPictureUrl(true, "png", dark() ? "#0b0b0f" : "#fff");
-            if (!url) return;
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `${symbol || "chart"}.png`;
-            a.click();
-          }}
-        >
-          Screenshot
-        </button>
+
+        {/* Right section: headerTrailing from ChartView */}
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+          {headerTrailing}
+        </div>
       </div>
-      <div className="relative flex min-h-0 flex-1 gap-2">
-      {sel && sel.currentStep === -1 && (
-        <div className="absolute right-16 top-2 z-10 max-w-[calc(100%-9rem)]">
-        <PropertiesPanel
-          key={sel.id}
-          overlay={sel}
-          allTimeframes={allIds.current.has(sel.id)}
-          onStyle={(styles) => {
-            chart.current?.overrideOverlay({ id: sel.id, styles } as never);
-            persist(400);
-            bump();
-          }}
-          onExtend={(level) => {
-            const fam = extendOf(sel.name);
-            const snap = snapshot(chart.current!, tfRef.current, allIds.current);
-            const i = snap.findIndex((d) => d.id === sel.id);
-            if (!fam || i < 0) return;
-            commit(snap.map(stripId).map((d, j) => (j === i ? { ...d, name: fam.family[level] } : d)));
-          }}
-          onAllTimeframes={(on) => {
-            if (on) allIds.current.add(sel.id);
-            else allIds.current.delete(sel.id);
-            persist();
-          }}
-          onDelete={() => chart.current?.removeOverlay({ id: sel.id })}
-        />
-        </div>
-      )}
+
+      {/* Main Chart Canvas + Left Drawing Rail */}
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        {sel && sel.currentStep === -1 && (
+          <div className="absolute right-16 top-2 z-10 max-w-[calc(100%-9rem)]">
+            <PropertiesPanel
+              key={sel.id}
+              overlay={sel}
+              allTimeframes={allIds.current.has(sel.id)}
+              onStyle={(styles) => {
+                chart.current?.overrideOverlay({ id: sel.id, styles } as never);
+                persist(400);
+                bump();
+              }}
+              onExtend={(level) => {
+                const fam = extendOf(sel.name);
+                const snap = snapshot(chart.current!, tfRef.current, allIds.current);
+                const i = snap.findIndex((d) => d.id === sel.id);
+                if (!fam || i < 0) return;
+                commit(snap.map(stripId).map((d, j) => (j === i ? { ...d, name: fam.family[level] } : d)));
+              }}
+              onAllTimeframes={(on) => {
+                if (on) allIds.current.add(sel.id);
+                else allIds.current.delete(sel.id);
+                persist();
+              }}
+              onDelete={() => chart.current?.removeOverlay({ id: sel.id })}
+            />
+          </div>
+        )}
+
         <DrawingToolbar
           active={active}
           magnet={magnet}
@@ -475,6 +539,7 @@ export function NepseTradingChart({
           onRedo={() => step("redo")}
           onClear={() => mine().forEach((o) => chart.current?.removeOverlay({ id: o.id }))}
         />
+
         <div ref={el} className="h-full min-w-0 flex-1" />
       </div>
     </div>
