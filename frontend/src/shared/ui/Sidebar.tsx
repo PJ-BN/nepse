@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect, ReactNode } from "react";
+import { useEffect, ReactNode } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserMenu, useAuth } from "@/features/auth";
+import { useNavbar } from "./NavbarContext";
 
 interface NavItem {
   href: string;
@@ -201,16 +202,25 @@ const NAV_SECTIONS: NavSection[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const {
+    isVisible,
+    toggleNavbar,
+    isMobileOpen,
+    setMobileOpen,
+    closeMobile,
+    isMac,
+    mounted,
+  } = useNavbar();
+  const shortcutHint = isMac ? "⌘B" : "Ctrl+B";
 
   // Close mobile drawer on route change
   useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+    closeMobile();
+  }, [pathname, closeMobile]);
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
-    if (mobileOpen) {
+    if (isMobileOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
@@ -218,7 +228,7 @@ export function Sidebar() {
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [mobileOpen]);
+  }, [isMobileOpen]);
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -308,7 +318,7 @@ export function Sidebar() {
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => setMobileOpen(!mobileOpen)}
+            onClick={() => setMobileOpen(!isMobileOpen)}
             aria-label="Toggle navigation menu"
             className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
           >
@@ -338,12 +348,12 @@ export function Sidebar() {
       {/* ======================================================== */}
       {/* 2. Mobile Drawer Navigation                             */}
       {/* ======================================================== */}
-      {mobileOpen && (
+      {isMobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in"
-            onClick={() => setMobileOpen(false)}
+            onClick={closeMobile}
           />
 
           {/* Drawer content */}
@@ -352,7 +362,7 @@ export function Sidebar() {
             <div className="shrink-0 flex items-center justify-between border-b border-border/80 px-4 py-3.5">
               <Link
                 href="/"
-                onClick={() => setMobileOpen(false)}
+                onClick={closeMobile}
                 className="flex items-center gap-2.5 font-bold tracking-tight text-foreground text-sm"
               >
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-background shadow-xs">
@@ -369,7 +379,7 @@ export function Sidebar() {
 
               <button
                 type="button"
-                onClick={() => setMobileOpen(false)}
+                onClick={closeMobile}
                 className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                 aria-label="Close menu"
               >
@@ -381,7 +391,7 @@ export function Sidebar() {
 
             {/* Scrollable links */}
             <div className="flex-1 min-h-0 overflow-y-auto p-3.5 [scrollbar-width:thin]">
-              <NavList onSelect={() => setMobileOpen(false)} />
+              <NavList onSelect={closeMobile} />
             </div>
 
             {/* Bottom Footer */}
@@ -403,38 +413,81 @@ export function Sidebar() {
       {/* ======================================================== */}
       {/* 3. Desktop Left Sidebar (Visible on md and larger)      */}
       {/* ======================================================== */}
-      <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card/95 backdrop-blur-md h-screen h-[100dvh] max-h-screen max-h-[100dvh] sticky top-0 shrink-0 z-30 select-none overflow-hidden">
-        {/* Brand Header */}
-        <div className="shrink-0 border-b border-border/80 px-4 py-4">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-background shadow-xs group-hover:scale-105 transition-transform">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M3 17l6-6 4 4 8-8" />
-                <path d="M15 7h6v6" />
+      <aside
+        className={`hidden md:flex flex-col border-r border-border bg-card/95 backdrop-blur-md h-screen h-[100dvh] max-h-screen max-h-[100dvh] sticky top-0 shrink-0 z-30 select-none overflow-hidden ${
+          mounted ? "transition-all duration-300 ease-in-out" : ""
+        } ${
+          isVisible
+            ? "w-64 opacity-100"
+            : "w-0 opacity-0 -mr-px border-r-0 pointer-events-none"
+        }`}
+        aria-hidden={!isVisible}
+      >
+        <div className="w-64 min-w-[16rem] h-full flex flex-col justify-between overflow-hidden">
+          {/* Brand Header */}
+          <div className="shrink-0 border-b border-border/80 px-4 py-3.5 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2.5 group min-w-0">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-background shadow-xs group-hover:scale-105 transition-transform">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M3 17l6-6 4 4 8-8" />
+                  <path d="M15 7h6v6" />
+                </svg>
+              </span>
+              <div className="flex flex-col min-w-0">
+                <span className="font-bold text-sm tracking-tight text-foreground truncate">NEPSE Analytics</span>
+                <span className="text-[10px] text-muted-foreground font-mono">v2.0 · Pro Suite</span>
+              </div>
+            </Link>
+
+            <button
+              type="button"
+              onClick={toggleNavbar}
+              title={`Hide navigation bar (${shortcutHint})`}
+              aria-label="Hide navigation bar"
+              className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <rect width="18" height="18" x="3" y="3" rx="2" />
+                <path d="M9 3v18" />
+                <path d="m14 9-3 3 3 3" />
               </svg>
-            </span>
-            <div className="flex flex-col min-w-0">
-              <span className="font-bold text-sm tracking-tight text-foreground truncate">NEPSE Analytics</span>
-              <span className="text-[10px] text-muted-foreground font-mono">v2.0 · Pro Suite</span>
-            </div>
-          </Link>
-        </div>
-
-        {/* Scrollable Navigation List */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-4 [scrollbar-width:thin]">
-          <NavList />
-        </div>
-
-        {/* Sticky Desktop Footer */}
-        <div className="shrink-0 border-t border-border/80 p-3 pb-3.5 bg-muted/15 flex flex-col gap-2.5 mt-auto">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-[11px] font-medium text-muted-foreground">Preferences</span>
-            <div className="flex items-center gap-1.5">
-              <ThemeToggle />
-            </div>
+            </button>
           </div>
-          <div className="w-full">
-            <UserMenu direction="up" />
+
+          {/* Scrollable Navigation List */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-3 py-4 [scrollbar-width:thin]">
+            <NavList />
+          </div>
+
+          {/* Sticky Desktop Footer */}
+          <div className="shrink-0 border-t border-border/80 p-3 pb-3 bg-muted/15 flex flex-col gap-2.5 mt-auto">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-medium text-muted-foreground">Preferences</span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={toggleNavbar}
+                  title={`Hide navigation bar (${shortcutHint})`}
+                  aria-label="Hide navigation bar"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border bg-surface text-gray-500 transition hover:text-foreground cursor-pointer"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <rect width="18" height="18" x="3" y="3" rx="2" />
+                    <path d="M9 3v18" />
+                    <path d="m14 9-3 3 3 3" />
+                  </svg>
+                </button>
+                <ThemeToggle />
+              </div>
+            </div>
+            <div className="w-full">
+              <UserMenu direction="up" />
+            </div>
+            <div className="text-center pt-0.5">
+              <span className="text-[10px] text-muted-foreground/60 font-mono">
+                Press {shortcutHint} to hide
+              </span>
+            </div>
           </div>
         </div>
       </aside>

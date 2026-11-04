@@ -1,5 +1,7 @@
 export * from "./Nav";
 export * from "./Sidebar";
+export * from "./NavbarContext";
+export * from "./AppShell";
 export * from "./QueryProvider";
 export * from "./ThemeToggle";
 export * from "./ActionLoaderContext";
