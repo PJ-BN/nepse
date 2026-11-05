@@ -3,10 +3,11 @@
 }
 
 {$DOMAIN:localhost} {
-    # Reverse proxy API and health check to FastAPI backend
-    reverse_proxy /api/* api:8000
+    # Reverse proxy FastAPI backend endpoints and health check
+    reverse_proxy /api/v1/* api:8000
     reverse_proxy /healthz api:8000
+    reverse_proxy /ws api:8000
 
-    # Reverse proxy all other requests to Next.js Web UI
+    # Reverse proxy all other requests (including Next.js Route Handlers /api/ai/* and Web UI)
     reverse_proxy * web:3000
 }

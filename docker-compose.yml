@@ -24,6 +24,8 @@ services:
     image: nepse-backend
     restart: unless-stopped
     env_file: .env
+    environment:
+      NEXTJS_INTERNAL_URL: http://web:3000
     command: uvicorn nepse.main:app --host 0.0.0.0 --port 8000 --app-dir src
     ports: ["8000:8000"]
     depends_on:

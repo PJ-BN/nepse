@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { evaluateMarketWithAgy } from "@/features/ai/agyRunner";
+import { evaluateMarketWithAgy, generateMarketHeuristic } from "@/features/ai/agyRunner";
 import { getStoredAiEvaluation, saveStoredAiEvaluation } from "@/features/ai/dbStorage";
 import type { MarketAiAnalysis } from "@/features/ai/types";
 import { checkAiAuth, unauthorizedAiResponse } from "../authCheck";
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Only force-refresh requests require authentication
-  if (!(await checkAiAuth(req))) {
+  if (forceRefresh && !(await checkAiAuth(req))) {
     return unauthorizedAiResponse();
   }
 
@@ -34,10 +34,8 @@ export async function GET(req: NextRequest) {
       if (fallbackStored) {
         return NextResponse.json(fallbackStored);
       }
-      return NextResponse.json(
-        { error: `Failed to fetch market summary: ${res.statusText}` },
-        { status: res.status }
-      );
+      // Heuristic fallback if market summary is temporarily unavailable
+      return NextResponse.json(generateMarketHeuristic({}));
     }
 
     const summary = (await res.json()) as Record<string, unknown>;
@@ -54,7 +52,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(analysis);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
     console.error("AI market analysis route error:", error);
 
     // Return previous stored data if available
@@ -67,6 +64,7 @@ export async function GET(req: NextRequest) {
       // ignore
     }
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Always return a valid heuristic analysis rather than breaking the UI
+    return NextResponse.json(generateMarketHeuristic({}));
   }
 }

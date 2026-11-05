@@ -519,7 +519,7 @@ function generateCompanyHeuristic(data: Record<string, unknown>): CompanyAiEvalu
   };
 }
 
-function generateMarketHeuristic(summary: Record<string, unknown>): MarketAiAnalysis {
+export function generateMarketHeuristic(summary: Record<string, unknown>): MarketAiAnalysis {
   const idx = (summary?.index || {}) as Record<string, unknown>;
   const chg = Number(idx.change ?? 0);
   const pct = Number(idx.pct_change ?? 0);

@@ -476,7 +476,7 @@ export function ChartView({
     >
       <div className="flex-1 min-h-0 flex relative overflow-hidden">
         {/* Main interactive chart */}
-        <div className="flex-1 min-w-0 h-full flex flex-col relative overflow-hidden">
+        <div className="flex-1 min-w-0 h-full flex flex-col relative">
           {symbol ? (
             <NepseTradingChart
               symbol={symbol}

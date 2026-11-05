@@ -8,7 +8,7 @@ import { History } from "../undo";
 import { DEFAULT_INDICATORS, type Candle, type Indicator, type PriceOverlay } from "../types";
 import { isMainIndicator, registerIndicators } from "../klines/indicators";
 import { registerOverlays } from "../klines/overlays";
-import { CHART_TYPES, DrawingToolbar, IndicatorMenu } from "./ChartTools";
+import { CHART_TYPES, DrawingToolbar, IndicatorMenu, TOOL_NAMES } from "./ChartTools";
 import { IndicatorSettings, LayoutMenu, PropertiesPanel } from "./EditPanels";
 
 const UP = "#16a34a";
@@ -124,6 +124,12 @@ export function NepseTradingChart({
   const magnetRef = useRef<OverlayMode>("normal");
   const [ready, setReady] = useState(false);
   const [active, setActive] = useState<string | null>(null);
+  const activeRef = useRef<string | null>(null);
+  activeRef.current = active;
+  const [continuous, setContinuous] = useState(false);
+  const continuousRef = useRef(false);
+  continuousRef.current = continuous;
+  const activeOverlayIdRef = useRef<string | null>(null);
   const [magnet, setMagnet] = useState<OverlayMode>("normal");
   const [locked, setLocked] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -131,7 +137,20 @@ export function NepseTradingChart({
   const settingsRef = useRef(DEFAULT_SETTINGS);
   const [layouts, setLayouts] = useState<Record<string, ChartSettings>>({});
   const [panel, setPanel] = useState<"indicators" | "layouts" | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
+
+  // Close Settings / Layouts panel on outside click
+  useEffect(() => {
+    if (!panel) return;
+    const handleDown = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setPanel(null);
+      }
+    };
+    window.addEventListener("mousedown", handleDown);
+    return () => window.removeEventListener("mousedown", handleDown);
+  }, [panel]);
   const [, setTick] = useState(0);
   const bump = () => setTick((t) => t + 1);
   const tf = timeframe ?? (intraday ? "intraday" : "1D");
@@ -164,16 +183,43 @@ export function NepseTradingChart({
     }, delay);
   }, []);
 
+  const cancelActiveDrawing = useCallback(() => {
+    if (activeOverlayIdRef.current && chart.current) {
+      const o = chart.current.getOverlays({ id: activeOverlayIdRef.current })[0];
+      if (o && (o.currentStep ?? 0) >= 0) {
+        chart.current.removeOverlay({ id: activeOverlayIdRef.current });
+      }
+    }
+    activeOverlayIdRef.current = null;
+    setActive(null);
+  }, []);
+
   const draw = useCallback(
-    (o: Partial<OverlayCreate> & { name: string }) =>
-      chart.current?.createOverlay({
+    (o: Partial<OverlayCreate> & { name: string }) => {
+      if (!o.name || !chart.current) return;
+      return chart.current.createOverlay({
         mode: magnetRef.current,
         onDrawEnd: () => {
-          setActive(null);
+          activeOverlayIdRef.current = null;
           persist();
+          if (continuousRef.current && activeRef.current) {
+            setTimeout(() => {
+              if (activeRef.current && chart.current) {
+                const nextId = draw({ name: activeRef.current });
+                if (typeof nextId === "string") {
+                  activeOverlayIdRef.current = nextId;
+                }
+              }
+            }, 60);
+          } else {
+            setActive(null);
+          }
         },
         onPressedMoveEnd: () => persist(),
         onRemoved: (e) => {
+          if (activeOverlayIdRef.current === e.overlay.id) {
+            activeOverlayIdRef.current = null;
+          }
           setSelected((s) => (s === e.overlay.id ? null : s));
           persist();
         },
@@ -183,7 +229,8 @@ export function NepseTradingChart({
           chart.current?.removeOverlay({ id: e.overlay.id });
         },
         ...o,
-      }),
+      });
+    },
     [persist],
   );
 
@@ -351,7 +398,9 @@ export function NepseTradingChart({
       onKeyDown={(e) => {
         if ((e.target as HTMLElement).closest("input, select, textarea")) return;
         const k = e.key.toLowerCase();
-        if ((e.ctrlKey || e.metaKey) && k === "z") {
+        if (e.key === "Escape") {
+          cancelActiveDrawing();
+        } else if ((e.ctrlKey || e.metaKey) && k === "z") {
           e.preventDefault();
           step(e.shiftKey ? "redo" : "undo");
         } else if ((e.ctrlKey || e.metaKey) && k === "y") {
@@ -363,7 +412,7 @@ export function NepseTradingChart({
       }}
     >
       {/* Unified Sleek Top Trading Header */}
-      <div className="shrink-0 flex items-center justify-between border-b border-border/80 bg-card/95 px-2.5 py-1.5 gap-2 text-xs overflow-x-auto [scrollbar-width:none]">
+      <div className="shrink-0 relative z-30 flex flex-wrap items-center justify-between border-b border-border/80 bg-card/95 px-2.5 py-1.5 gap-2 text-xs select-none">
         {/* Left section: Leading props (Symbol, Timeframe, etc.) + Chart Type + Scale */}
         <div className="flex items-center gap-1.5 shrink-0">
           {headerLeading}
@@ -399,8 +448,34 @@ export function NepseTradingChart({
           </select>
         </div>
 
-        {/* Center section: Indicators, Settings, Layouts, Screenshot */}
+        {/* Center section: Quick Indicators, Full Indicators Menu, Settings, Layouts, Screenshot */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Quick 1-Click Indicator Toggles */}
+          <div className="flex items-center gap-1">
+            {["VOL", "EMA", "RSI", "MACD"].map((indName) => {
+              const isIndActive = activeNames.has(indName);
+              return (
+                <button
+                  key={indName}
+                  type="button"
+                  onClick={() => {
+                    if (removed.includes(indName)) update({ removed: removed.filter((x) => x !== indName) });
+                    else if (activeNames.has(indName)) removeIndicator(indName);
+                    else update({ extras: [...extras, indName] });
+                  }}
+                  className={`rounded-md border px-2 py-1 text-[11px] font-bold transition-all cursor-pointer ${
+                    isIndActive
+                      ? "border-primary/60 bg-primary/20 text-primary shadow-2xs"
+                      : "border-border/70 bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                  title={`Toggle ${indName} on/off`}
+                >
+                  {indName}
+                </button>
+              );
+            })}
+          </div>
+
           <IndicatorMenu
             active={activeNames}
             onToggle={(name) => {
@@ -410,46 +485,56 @@ export function NepseTradingChart({
             }}
           />
 
-          <div className="relative">
-            <button
-              type="button"
-              aria-expanded={panel === "indicators"}
-              className="rounded-lg border border-border bg-background px-2 py-1 text-xs font-medium hover:bg-muted cursor-pointer transition-colors"
-              onClick={() => setPanel(panel === "indicators" ? null : "indicators")}
-            >
-              Settings
-            </button>
-            {panel === "indicators" && chart.current && (
-              <div className="absolute left-0 top-full z-40 mt-1">
-                <IndicatorSettings
-                  chart={chart.current}
-                  params={settings.params}
-                  onParams={(name, p: IndicatorParams) => update({ params: { ...settings.params, [name]: p } })}
-                  onRemove={removeIndicator}
-                />
-              </div>
-            )}
-          </div>
+          <div ref={panelRef} className="flex items-center gap-1.5">
+            <div className="relative">
+              <button
+                type="button"
+                aria-expanded={panel === "indicators"}
+                className={`rounded-lg border px-2 py-1 text-xs font-medium cursor-pointer transition-colors ${
+                  panel === "indicators"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-background hover:bg-muted text-foreground"
+                }`}
+                onClick={() => setPanel(panel === "indicators" ? null : "indicators")}
+              >
+                Settings
+              </button>
+              {panel === "indicators" && chart.current && (
+                <div className="absolute left-0 top-full z-50 mt-1.5 shadow-2xl">
+                  <IndicatorSettings
+                    chart={chart.current}
+                    params={settings.params}
+                    onParams={(name, p: IndicatorParams) => update({ params: { ...settings.params, [name]: p } })}
+                    onRemove={removeIndicator}
+                  />
+                </div>
+              )}
+            </div>
 
-          <div className="relative">
-            <button
-              type="button"
-              aria-expanded={panel === "layouts"}
-              className="rounded-lg border border-border bg-background px-2 py-1 text-xs font-medium hover:bg-muted cursor-pointer transition-colors"
-              onClick={() => setPanel(panel === "layouts" ? null : "layouts")}
-            >
-              Layouts
-            </button>
-            {panel === "layouts" && (
-              <div className="absolute left-0 top-full z-40 mt-1">
-                <LayoutMenu
-                  layouts={layouts}
-                  onSave={(name) => setLayouts(saveLayout(name, settings))}
-                  onLoad={(s) => update(s)}
-                  onDelete={(name) => setLayouts(deleteLayout(name))}
-                />
-              </div>
-            )}
+            <div className="relative">
+              <button
+                type="button"
+                aria-expanded={panel === "layouts"}
+                className={`rounded-lg border px-2 py-1 text-xs font-medium cursor-pointer transition-colors ${
+                  panel === "layouts"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-background hover:bg-muted text-foreground"
+                }`}
+                onClick={() => setPanel(panel === "layouts" ? null : "layouts")}
+              >
+                Layouts
+              </button>
+              {panel === "layouts" && (
+                <div className="absolute left-0 top-full z-50 mt-1.5 shadow-2xl">
+                  <LayoutMenu
+                    layouts={layouts}
+                    onSave={(name) => setLayouts(saveLayout(name, settings))}
+                    onLoad={(s) => update(s)}
+                    onDelete={(name) => setLayouts(deleteLayout(name))}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <button
@@ -480,7 +565,33 @@ export function NepseTradingChart({
       </div>
 
       {/* Main Chart Canvas + Left Drawing Rail */}
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+      <div className="relative flex min-h-0 flex-1">
+        {/* Floating Active Drawing Mode Banner */}
+        {active && (
+          <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 rounded-full border border-primary/40 bg-card/95 px-3 py-1 shadow-lg backdrop-blur-xs text-xs">
+            <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+            <span className="font-semibold text-foreground">
+              Drawing: {TOOL_NAMES[active] || active}
+            </span>
+            {continuous && (
+              <span className="rounded bg-teal-500/20 px-1.5 py-0.5 text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">
+                Continuous
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={cancelActiveDrawing}
+              className="ml-1 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors"
+              title="Cancel drawing tool (Esc)"
+              aria-label="Cancel drawing tool"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {sel && sel.currentStep === -1 && (
           <div className="absolute right-16 top-2 z-10 max-w-[calc(100%-9rem)]">
             <PropertiesPanel
@@ -514,12 +625,19 @@ export function NepseTradingChart({
           magnet={magnet}
           locked={locked}
           hidden={hidden}
+          continuous={continuous}
           canUndo={history.current.canUndo}
           canRedo={history.current.canRedo}
           onPick={(name) => {
+            if (!name) {
+              cancelActiveDrawing();
+              return;
+            }
             setActive(name);
-            draw({ name });
+            const id = draw({ name });
+            activeOverlayIdRef.current = typeof id === "string" ? id : null;
           }}
+          onContinuous={() => setContinuous((c) => !c)}
           onMagnet={() => {
             const next = MAGNETS[(MAGNETS.indexOf(magnet) + 1) % MAGNETS.length];
             magnetRef.current = next;

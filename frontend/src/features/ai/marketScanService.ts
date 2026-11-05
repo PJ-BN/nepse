@@ -76,7 +76,7 @@ export async function getLatestAgentScan(forceRefresh = false): Promise<AgentSca
   if (!forceRefresh) {
     try {
       const stored = await getStoredAiEvaluation<AgentScanResult>("agent_scan", "LATEST");
-      if (stored && Array.isArray(stored.stocks) && stored.stocks.length > 20) {
+      if (stored && Array.isArray(stored.stocks) && stored.stocks.length > 0) {
         return stored;
       }
     } catch (err) {

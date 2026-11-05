@@ -62,18 +62,24 @@ export function SymbolSearch({ value, onSelect }: { value: string; onSelect: (sy
         className="w-52 rounded border px-2 py-1 font-mono"
       />
       {open && data.length > 0 && (
-        <ul className="absolute z-20 mt-1 max-h-72 w-80 overflow-auto rounded border bg-surface shadow-lg">
+        <ul className="absolute z-50 mt-1 max-h-72 w-80 overflow-auto rounded-xl border border-border bg-card shadow-2xl p-1">
           {data.map((d, i) => (
             <li key={d.symbol}>
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => pick(d.symbol)}
-                className={`flex w-full items-baseline gap-2 px-2 py-1 text-left text-sm hover:bg-hover ${i === active ? "bg-hover" : ""}`}
+                className={`flex w-full items-baseline gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-muted ${
+                  i === active ? "bg-muted font-semibold" : ""
+                }`}
               >
-                <span className="font-mono font-semibold">{d.symbol}</span>
-                <span className="truncate text-xs text-gray-500">{d.description}</span>
-                {d.type === "index" && <span className="ml-auto text-[10px] uppercase text-gray-500">index</span>}
+                <span className="font-mono font-bold text-foreground">{d.symbol}</span>
+                <span className="truncate text-xs text-muted-foreground">{d.description}</span>
+                {d.type === "index" && (
+                  <span className="ml-auto rounded bg-primary/10 px-1 text-[9px] font-bold uppercase text-primary">
+                    index
+                  </span>
+                )}
               </button>
             </li>
           ))}

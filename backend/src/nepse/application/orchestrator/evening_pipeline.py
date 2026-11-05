@@ -306,6 +306,95 @@ async def run_evening_pipeline(triggered_by: str = "scheduler") -> dict[str, Any
                     except Exception:
                         pass
 
+                # Also persist unified agent_scan so Watchlist & Dashboard agent load instantly
+                try:
+                    agent_stocks = []
+                    top_buy_syms = set(watch_payload.get("topBuys", []))
+                    for c in candidates:
+                        sym = str(c.get("symbol", "")).upper()
+                        close_val = float(c.get("close") or 0.0)
+                        action_val = "BUY" if sym in top_buy_syms else "WATCHLIST"
+                        urgency_val = "IMMEDIATE" if action_val == "BUY" else "ON_CONFIRMATION"
+
+                        matched_setup = next(
+                            (s for s in trade_payload.get("setups", []) if s.get("symbol") == sym),
+                            None
+                        )
+
+                        agent_stocks.append({
+                            "symbol": sym,
+                            "name": str(c.get("name") or sym),
+                            "sector": str(c.get("sector") or "Commercial Banks"),
+                            "close": close_val,
+                            "changePct": float(c.get("change_pct") or 0.0),
+                            "volume": int(c.get("volume") or 0),
+                            "turnover": float(c.get("turnover") or 0.0),
+                            "action": action_val,
+                            "confidenceScore": int(matched_setup.get("confidenceScore", 80) if matched_setup else 75),
+                            "urgency": urgency_val,
+                            "headlineReason": (
+                                matched_setup.get("headlineReason")
+                                if matched_setup
+                                else f"Top institutional accumulation ({c.get('top3_broker_accum_15d_pct', 55)}%) and positive momentum."
+                            ),
+                            "detailedAnalysis": f"Assessed under {regime_str} market regime with broker accumulation support.",
+                            "rsi14": float(c.get("rsi_14") or 52.0),
+                            "rsiBullDiv": bool(c.get("rsi_bull_div")),
+                            "smaPosition": "ABOVE_ALL" if close_val > float(c.get("sma_50") or 0) else "MIXED",
+                            "range52wPct": 65.0,
+                            "high52w": float(c.get("high_52w") or close_val * 1.15),
+                            "low52w": float(c.get("low_52w") or close_val * 0.85),
+                            "brokerAccumulationPct": float(c.get("top3_broker_accum_15d_pct") or 55.0),
+                            "tradePlan": matched_setup.get("tradePlan") if matched_setup else None,
+                            "catalysts": [],
+                            "signals": {
+                                "technicalTrend": "bullish" if action_val == "BUY" else "neutral",
+                                "smartMoneyFlow": "accumulating" if float(c.get("top3_broker_accum_15d_pct") or 0) > 40 else "neutral",
+                                "valuation": "fair",
+                                "newsSentiment": "positive",
+                            },
+                        })
+
+                    agent_scan_payload = {
+                        "briefing": {
+                            "marketRegime": "BULLISH_TREND" if "BULL" in regime_str.upper() else "RANGE_BOUND",
+                            "confidenceScore": int(market_payload.get("confidence_score") or 75),
+                            "totalStocksScanned": len(candidates),
+                            "buyCount": len([s for s in agent_stocks if s["action"] == "BUY"]),
+                            "watchlistCount": len([s for s in agent_stocks if s["action"] == "WATCHLIST"]),
+                            "sellCount": 0,
+                            "executiveBrief": watch_payload.get(
+                                "executiveBrief",
+                                f"Evening scan evaluated {len(candidates)} high-activity equities. Positive institutional flow."
+                            ),
+                            "topSectorPick": watch_payload.get("topSectorPick", "Commercial Banks"),
+                            "tacticalStrategy": watch_payload.get(
+                                "tacticalStrategy",
+                                "Scale into leading broker accumulation setups."
+                            ),
+                            "evaluatedAt": now_utc.isoformat(),
+                        },
+                        "stocks": agent_stocks,
+                        "topBuys": [s for s in agent_stocks if s["action"] == "BUY"],
+                        "topWatchlist": [s for s in agent_stocks if s["action"] == "WATCHLIST"],
+                        "topSells": [],
+                        "source": "openrouter" if watch_res.success else "heuristic",
+                    }
+
+                    await ai_repo.upsert_evaluation(
+                        feature="agent_scan",
+                        entity_key="LATEST",
+                        payload=agent_scan_payload,
+                        source=agent_scan_payload["source"],
+                        generated_at=now_utc,
+                    )
+                except Exception as ase:
+                    log.warning("Could not persist agent_scan evaluation: %s", ase)
+                    try:
+                        await session.rollback()
+                    except Exception:
+                        pass
+
                 # ==============================================================
                 # 6. Warm Redis hot cache for instant <50ms read by regular users
                 # ==============================================================
