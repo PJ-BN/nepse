@@ -50,6 +50,56 @@ def test_floorsheet_page():
     assert t.trade_time.tzinfo is NPT and t.buyer_name
 
 
+def test_floorsheet_page_with_null_brokers():
+    payload = {
+        "floorsheets": {
+            "content": [
+                {
+                    "contractId": 2026110601000001,
+                    "stockSymbol": "HBL",
+                    "buyerMemberId": None,
+                    "sellerMemberId": None,
+                    "contractQuantity": 10,
+                    "contractRate": 201.8,
+                    "contractAmount": 2018.0,
+                    "tradeTime": "2026-11-06T10:46:00.011454",
+                    "buyerBrokerName": None,
+                    "sellerBrokerName": None,
+                }
+            ],
+            "totalPages": 8,
+        }
+    }
+    ticks, pages = parsers.floorsheet_page(payload)
+    assert len(ticks) == 1
+    assert pages == 8
+    assert ticks[0].buyer_broker == 0
+    assert ticks[0].seller_broker == 0
+    assert ticks[0].contract_no == 2026110601000001
+    assert ticks[0].qty == 10
+
+
+def test_today_prices_with_null_volume():
+    content = [
+        {
+            "symbol": "TEST",
+            "businessDate": "2026-11-06",
+            "openPrice": None,
+            "highPrice": None,
+            "lowPrice": None,
+            "closePrice": None,
+            "previousDayClosePrice": 100,
+            "totalTradedQuantity": None,
+            "totalTradedValue": None,
+            "totalTrades": None,
+        }
+    ]
+    bars = parsers.today_prices(content)
+    assert len(bars) == 1
+    assert bars[0].volume == 0
+    assert bars[0].transactions is None
+
+
 def test_listed_companies_skips_delisted_and_maps_sectors():
     companies = parsers.listed_companies(load("company_list"), load("security_list"))
     by_symbol = {c.symbol: c for c in companies}

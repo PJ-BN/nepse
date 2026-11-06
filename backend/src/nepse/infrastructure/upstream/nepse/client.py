@@ -100,8 +100,8 @@ class NepseClient:
         while page < pages:
             data = await self._call("POST", "nots/nepse-data/today-price", PayloadKind.TODAY_PRICE, market_id,
                                     size=PAGE_SIZE, page=page)
-            bars += parsers.today_prices(data["content"])
-            pages, page = int(data["totalPages"]), page + 1
+            bars += parsers.today_prices(data.get("content") or [])
+            pages, page = int(data.get("totalPages") or 0), page + 1
             await asyncio.sleep(PAGE_DELAY)
         return bars
 

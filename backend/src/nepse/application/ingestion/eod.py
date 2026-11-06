@@ -28,8 +28,8 @@ async def run_eod(source: MarketDataSource, repo: IngestionRepository) -> EodRep
     report.index_bars = await repo.upsert_index_bars(await source.index_bars())
 
     async for page in source.floorsheet():
-        brokers = {t.buyer_broker: t.buyer_name for t in page if t.buyer_name}
-        brokers |= {t.seller_broker: t.seller_name for t in page if t.seller_name}
+        brokers = {t.buyer_broker: t.buyer_name for t in page if t.buyer_name and t.buyer_broker}
+        brokers |= {t.seller_broker: t.seller_name for t in page if t.seller_name and t.seller_broker}
         await repo.upsert_brokers(brokers)
         inserted, unknown = await repo.insert_floorsheet(page)
         report.floorsheet_ticks += inserted
